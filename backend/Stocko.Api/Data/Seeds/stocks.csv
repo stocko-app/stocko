@@ -1,0 +1,149 @@
+Ticker,Name,Market,Sector,IndexReference
+AAPL,Apple Inc.,US,Technology,SP500
+MSFT,Microsoft Corporation,US,Technology,SP500
+NVDA,NVIDIA Corporation,US,Technology,SP500
+GOOGL,Alphabet Inc.,US,Technology,SP500
+AMZN,Amazon.com Inc.,US,Technology,SP500
+META,Meta Platforms Inc.,US,Technology,SP500
+TSLA,Tesla Inc.,US,Automotive,SP500
+BRK.B,Berkshire Hathaway,US,Finance,SP500
+AVGO,Broadcom Inc.,US,Technology,SP500
+JPM,JPMorgan Chase,US,Finance,SP500
+V,Visa Inc.,US,Finance,SP500
+MA,Mastercard Inc.,US,Finance,SP500
+UNH,UnitedHealth Group,US,Healthcare,SP500
+LLY,Eli Lilly,US,Healthcare,SP500
+XOM,ExxonMobil,US,Energy,SP500
+JNJ,Johnson & Johnson,US,Healthcare,SP500
+WMT,Walmart Inc.,US,Retail,SP500
+PG,Procter & Gamble,US,Consumer,SP500
+HD,Home Depot,US,Retail,SP500
+BAC,Bank of America,US,Finance,SP500
+NFLX,Netflix Inc.,US,Technology,SP500
+ADBE,Adobe Inc.,US,Technology,SP500
+CRM,Salesforce Inc.,US,Technology,SP500
+AMD,Advanced Micro Devices,US,Technology,SP500
+INTC,Intel Corporation,US,Technology,SP500
+CSCO,Cisco Systems,US,Technology,SP500
+ORCL,Oracle Corporation,US,Technology,SP500
+KO,Coca-Cola Company,US,Consumer,SP500
+PEP,PepsiCo Inc.,US,Consumer,SP500
+MCD,McDonald's Corporation,US,Consumer,SP500
+NKE,Nike Inc.,US,Consumer,SP500
+DIS,Walt Disney Company,US,Entertainment,SP500
+PFE,Pfizer Inc.,US,Healthcare,SP500
+MRK,Merck & Co.,US,Healthcare,SP500
+ABBV,AbbVie Inc.,US,Healthcare,SP500
+CVX,Chevron Corporation,US,Energy,SP500
+WFC,Wells Fargo,US,Finance,SP500
+GS,Goldman Sachs,US,Finance,SP500
+MS,Morgan Stanley,US,Finance,SP500
+CAT,Caterpillar Inc.,US,Industrials,SP500
+BA,Boeing Company,US,Industrials,SP500
+GE,General Electric,US,Industrials,SP500
+HON,Honeywell International,US,Industrials,SP500
+SBUX,Starbucks Corporation,US,Consumer,SP500
+UBER,Uber Technologies,US,Technology,SP500
+ABNB,Airbnb Inc.,US,Travel,SP500
+PLTR,Palantir Technologies,US,Technology,SP500
+SPOT,Spotify Technology,US,Entertainment,SP500
+PYPL,PayPal Holdings,US,Finance,SP500
+SHOP,Shopify Inc.,US,Technology,SP500
+SNOW,Snowflake Inc.,US,Technology,SP500
+CRWD,CrowdStrike Holdings,US,Technology,SP500
+DDOG,Datadog Inc.,US,Technology,SP500
+PANW,Palo Alto Networks,US,Technology,SP500
+NOW,ServiceNow Inc.,US,Technology,SP500
+ISRG,Intuitive Surgical,US,Healthcare,SP500
+MRNA,Moderna Inc.,US,Healthcare,SP500
+DUOL,Duolingo Inc.,US,Technology,SP500
+HOOD,Robinhood Markets,US,Finance,SP500
+COIN,Coinbase Global,US,Finance,SP500
+SQ,Block Inc.,US,Finance,SP500
+DASH,DoorDash Inc.,US,Technology,SP500
+TXN,Texas Instruments,US,Technology,SP500
+LMT,Lockheed Martin,US,Industrials,SP500
+DE,Deere & Company,US,Industrials,SP500
+TSM,TSMC,EMERGING,Technology,EMERGING
+SSNLF,Samsung Electronics,EMERGING,Technology,EMERGING
+SE,Sea Limited,EMERGING,Technology,EMERGING
+MELI,MercadoLibre,EMERGING,Technology,EMERGING
+NU,Nu Holdings,EMERGING,Finance,EMERGING
+GRAB,Grab Holdings,EMERGING,Technology,EMERGING
+TOST,Toast Inc.,EMERGING,Technology,EMERGING
+CPNG,Coupang Inc.,EMERGING,Retail,EMERGING
+RELY,Remitly Global,EMERGING,Finance,EMERGING
+AFRM,Affirm Holdings,EMERGING,Finance,EMERGING
+3690.HK,Meituan,EMERGING,Technology,EMERGING
+HUB,HubSpot Inc.,US,Technology,SP500
+MDB,MongoDB Inc.,US,Technology,SP500
+NET,Cloudflare Inc.,US,Technology,SP500
+ZM,Zoom Video,US,Technology,SP500
+TWLO,Twilio Inc.,US,Technology,SP500
+MAR,Marriott International,US,Travel,SP500
+HLT,Hilton Worldwide,US,Travel,SP500
+BKNG,Booking Holdings,US,Travel,SP500
+EXPE,Expedia Group,US,Travel,SP500
+LYFT,Lyft Inc.,US,Technology,SP500
+7203.T,Toyota Motor,JP,Automotive,NIKKEI
+6758.T,Sony Group,JP,Technology,NIKKEI
+9984.T,SoftBank Group,JP,Technology,NIKKEI
+7974.T,Nintendo,JP,Entertainment,NIKKEI
+7267.T,Honda Motor,JP,Automotive,NIKKEI
+8058.T,Mitsubishi Corporation,JP,Industrials,NIKKEI
+6861.T,Keyence Corporation,JP,Technology,NIKKEI
+9983.T,Fast Retailing (Uniqlo),JP,Retail,NIKKEI
+6098.T,Recruit Holdings,JP,Technology,NIKKEI
+4063.T,Shin-Etsu Chemical,JP,Materials,NIKKEI
+MC.PA,LVMH,EU,Consumer,EUROSTOXX
+RMS.PA,Hermès,EU,Consumer,EUROSTOXX
+ASML.AS,ASML Holding,EU,Technology,EUROSTOXX
+SAP.DE,SAP SE,EU,Technology,EUROSTOXX
+NESN.SW,Nestlé,EU,Consumer,EUROSTOXX
+NOVN.SW,Novartis,EU,Healthcare,EUROSTOXX
+ROG.SW,Roche Holding,EU,Healthcare,EUROSTOXX
+SIE.DE,Siemens AG,EU,Industrials,EUROSTOXX
+VOW3.DE,Volkswagen,EU,Automotive,EUROSTOXX
+BMW.DE,BMW AG,EU,Automotive,EUROSTOXX
+MBG.DE,Mercedes-Benz,EU,Automotive,EUROSTOXX
+TTE.PA,TotalEnergies,EU,Energy,EUROSTOXX
+SHEL.AS,Shell plc,EU,Energy,EUROSTOXX
+BP.L,BP plc,EU,Energy,EUROSTOXX
+ULVR.L,Unilever,EU,Consumer,EUROSTOXX
+AZN.L,AstraZeneca,EU,Healthcare,EUROSTOXX
+BNP.PA,BNP Paribas,EU,Finance,EUROSTOXX
+SAN.MC,Santander,EU,Finance,EUROSTOXX
+BBVA.MC,BBVA,EU,Finance,EUROSTOXX
+AIR.PA,Airbus SE,EU,Industrials,EUROSTOXX
+STLAM.MI,Stellantis,EU,Automotive,EUROSTOXX
+IBE.MC,Iberdrola,EU,Energy,EUROSTOXX
+ENEL.MI,Enel SpA,EU,Energy,EUROSTOXX
+ADS.DE,Adidas AG,EU,Consumer,EUROSTOXX
+CFR.SW,Richemont,EU,Consumer,EUROSTOXX
+EDP.LS,EDP,PT,Energy,PSI20
+EDPR.LS,EDP Renováveis,PT,Energy,PSI20
+GALP.LS,Galp Energia,PT,Energy,PSI20
+NOS.LS,NOS SGPS,PT,Telecommunications,PSI20
+BCP.LS,Millennium BCP,PT,Finance,PSI20
+JMT.LS,Jerónimo Martins,PT,Retail,PSI20
+ALTR.LS,Altri SGPS,PT,Materials,PSI20
+SON.LS,Sonae SGPS,PT,Retail,PSI20
+RENE.LS,REN,PT,Energy,PSI20
+COR.LS,Corticeira Amorim,PT,Materials,PSI20
+IBS.LS,Ibersol,PT,Consumer,PSI20
+MOTA.LS,Mota-Engil,PT,Industrials,PSI20
+GREENVI.LS,Greenvolt,PT,Energy,PSI20
+SEMP.LS,Semapa,PT,Materials,PSI20
+NVG.LS,The Navigator Company,PT,Materials,PSI20
+BTC-USD,Bitcoin,CRYPTO,Cryptocurrency,CRYPTO
+ETH-USD,Ethereum,CRYPTO,Cryptocurrency,CRYPTO
+GC=F,Gold (Ouro),COMMODITY,Commodity,COMMODITY
+SI=F,Silver (Prata),COMMODITY,Commodity,COMMODITY
+CL=F,Crude Oil WTI,COMMODITY,Commodity,COMMODITY
+NG=F,Natural Gas,COMMODITY,Commodity,COMMODITY
+HG=F,Copper (Cobre),COMMODITY,Commodity,COMMODITY
+ZW=F,Wheat (Trigo),COMMODITY,Commodity,COMMODITY
+ZC=F,Corn (Milho),COMMODITY,Commodity,COMMODITY
+KC=F,Coffee (Café),COMMODITY,Commodity,COMMODITY
+CT=F,Cotton (Algodão),COMMODITY,Commodity,COMMODITY
+LITH,Lithium ETF (Lítio),COMMODITY,Commodity,COMMODITY
