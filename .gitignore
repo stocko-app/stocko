@@ -1,0 +1,19 @@
+# ASP.NET Core
+backend/**/bin/
+backend/**/obj/
+backend/**/appsettings.json
+backend/**/appsettings.*.json
+
+# Expo / React Native
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
