@@ -1,0 +1,74 @@
+using Stocko.Api.Data;
+using Supabase.Gotrue;
+
+namespace Stocko.Api.Services;
+
+public class AuthService
+{
+    private readonly Supabase.Client _supabase;
+    private readonly StockoDbContext _db;
+
+    public AuthService(Supabase.Client supabase, StockoDbContext db)
+    {
+        _supabase = supabase;
+        _db = db;
+    }
+
+    public async Task<AuthResult> RegisterAsync(string email, string password, string username)
+    {
+        var usernameExists = _db.Users.Any(u => u.Username == username);
+        if (usernameExists)
+            return new AuthResult { Success = false, Error = "Username já está em uso." };
+
+        var response = await _supabase.Auth.SignUp(email, password);
+
+        if (response?.User == null)
+            return new AuthResult { Success = false, Error = "Erro ao criar conta." };
+
+        var user = new Models.User
+        {
+            Id = Guid.Parse(response.User.Id!),
+            Email = email,
+            Username = username,
+            Plan = "free",
+            LeagueTier = "bronze",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        return new AuthResult
+        {
+            Success = true,
+            AccessToken = response.AccessToken,
+            RefreshToken = response.RefreshToken,
+            UserId = user.Id
+        };
+    }
+
+    public async Task<AuthResult> LoginAsync(string email, string password)
+    {
+        var response = await _supabase.Auth.SignIn(email, password);
+
+        if (response?.User == null)
+            return new AuthResult { Success = false, Error = "Credenciais inválidas." };
+
+        return new AuthResult
+        {
+            Success = true,
+            AccessToken = response.AccessToken,
+            RefreshToken = response.RefreshToken,
+            UserId = Guid.Parse(response.User.Id!)
+        };
+    }
+}
+
+public class AuthResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? AccessToken { get; set; }
+    public string? RefreshToken { get; set; }
+    public Guid UserId { get; set; }
+}
