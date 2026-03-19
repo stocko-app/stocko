@@ -22,6 +22,8 @@ builder.Services.AddScoped<Supabase.Client>(_ =>
 
 // Services
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddHttpClient<MarketDataService>();
+builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddMemoryCache();
 
 // Swagger

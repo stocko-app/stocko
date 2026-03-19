@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
+using Stocko.Api.Services;
 
 namespace Stocko.Api.Controllers;
 
@@ -98,4 +99,11 @@ public class StocksController : ControllerBase
 
         return Ok(stock);
     }
+	
+	[HttpGet("fetch/{ticker}")]
+	public async Task<IActionResult> FetchPrice(string ticker, [FromServices] MarketDataService marketData)
+	{
+		await marketData.FetchAndCachePriceAsync(ticker);
+		return Ok($"Preço de {ticker} actualizado.");
+	}
 }
