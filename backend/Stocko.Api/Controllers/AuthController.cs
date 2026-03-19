@@ -54,6 +54,16 @@ public class AuthController : ControllerBase
             result.UserId
         });
     }
+	
+	[HttpGet("me")]
+	public IActionResult Me()
+	{
+		var userId = HttpContext.Items["UserId"];
+		if (userId == null)
+			return Unauthorized("Token inválido ou ausente.");
+
+		return Ok(new { userId });
+	}
 }
 
 public record RegisterRequest(string Email, string Password, string Username);

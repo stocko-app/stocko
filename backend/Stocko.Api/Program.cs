@@ -9,15 +9,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<StockoDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Supabase
+// Supabase Client
 builder.Services.AddScoped<Supabase.Client>(_ =>
 {
     var url = builder.Configuration["Supabase:Url"]!;
     var key = builder.Configuration["Supabase:ServiceRoleKey"]!;
-    var options = new Supabase.SupabaseOptions
-    {
-        AutoConnectRealtime = false
-    };
+    var options = new Supabase.SupabaseOptions { AutoConnectRealtime = false };
     var client = new Supabase.Client(url, key, options);
     client.InitializeAsync().Wait();
     return client;
@@ -25,6 +22,7 @@ builder.Services.AddScoped<Supabase.Client>(_ =>
 
 // Services
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddMemoryCache();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -40,6 +38,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<SupabaseAuthMiddleware>();
 app.MapControllers();
 
 // Health check
