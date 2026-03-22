@@ -8,89 +8,202 @@ public class MarketDataService
 {
     private readonly HttpClient _http;
     private readonly StockoDbContext _db;
-    private readonly string _apiKey;
+    private readonly string _twelveDataKey;
+    private readonly string _finnhubKey;
+    private readonly string _alphaVantageKey;
 
     public MarketDataService(HttpClient http, StockoDbContext db, IConfiguration config)
     {
         _http = http;
         _db = db;
-        _apiKey = config["AlphaVantage:ApiKey"]!;
+        _twelveDataKey = config["MarketData:TwelveDataApiKey"]!;
+        _finnhubKey = config["MarketData:FinnhubApiKey"]!;
+        _alphaVantageKey = config["AlphaVantage:ApiKey"]!;
+    }
+
+    public async Task<StockPriceResult?> FetchFromTwelveDataAsync(string ticker)
+    {
+        try
+        {
+            Console.WriteLine($"🔄 TwelveData: {ticker}");
+            var url = $"https://api.twelvedata.com/quote?symbol={ticker}&apikey={_twelveDataKey}";
+            var response = await _http.GetStringAsync(url);
+            var json = JsonDocument.Parse(response);
+
+            if (json.RootElement.TryGetProperty("status", out var status) &&
+                status.GetString() == "error")
+            {
+                Console.WriteLine($"❌ TwelveData erro: {json.RootElement.GetProperty("message").GetString()}");
+                return null;
+            }
+
+            var close = json.RootElement.GetProperty("close").GetString();
+            var open = json.RootElement.GetProperty("open").GetString();
+            var dateStr = json.RootElement.GetProperty("datetime").GetString();
+
+            if (!decimal.TryParse(close, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var closePrice)) return null;
+            if (!decimal.TryParse(open, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var openPrice)) return null;
+            if (!DateOnly.TryParse(dateStr?.Split(" ")[0], out var date)) return null;
+
+            var pctChange = openPrice != 0
+                ? Math.Round((closePrice - openPrice) / openPrice * 100, 4)
+                : 0;
+
+            return new StockPriceResult
+            {
+                Date = date,
+                Open = openPrice,
+                Close = closePrice,
+                PctChange = pctChange,
+                Source = "TwelveData"
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ TwelveData excepção: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<StockPriceResult?> FetchFromFinnhubAsync(string ticker)
+    {
+        try
+        {
+            Console.WriteLine($"🔄 Finnhub: {ticker}");
+            var url = $"https://finnhub.io/api/v1/quote?symbol={ticker}&token={_finnhubKey}";
+            var response = await _http.GetStringAsync(url);
+            var json = JsonDocument.Parse(response);
+
+            var current = json.RootElement.GetProperty("c").GetDecimal();
+            var open = json.RootElement.GetProperty("o").GetDecimal();
+
+            if (current == 0) return null;
+
+            var pctChange = open != 0
+                ? Math.Round((current - open) / open * 100, 4)
+                : 0;
+
+            return new StockPriceResult
+            {
+                Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                Open = open,
+                Close = current,
+                PctChange = pctChange,
+                Source = "Finnhub"
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Finnhub excepção: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<StockPriceResult?> FetchFromAlphaVantageAsync(string ticker)
+    {
+        try
+        {
+            Console.WriteLine($"🔄 AlphaVantage: {ticker}");
+            var url = $"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={_alphaVantageKey}";
+            var response = await _http.GetStringAsync(url);
+            var json = JsonDocument.Parse(response);
+
+            if (!json.RootElement.TryGetProperty("Global Quote", out var quote)) return null;
+
+            var price = quote.GetProperty("05. price").GetString();
+            var prev = quote.GetProperty("08. previous close").GetString();
+            var dateStr = quote.GetProperty("07. latest trading day").GetString();
+
+            if (!decimal.TryParse(price, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var closePrice)) return null;
+            if (!decimal.TryParse(prev, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var prevClose)) return null;
+            if (!DateOnly.TryParse(dateStr, out var date)) return null;
+
+            var pctChange = prevClose != 0
+                ? Math.Round((closePrice - prevClose) / prevClose * 100, 4)
+                : 0;
+
+            return new StockPriceResult
+            {
+                Date = date,
+                Open = prevClose,
+                Close = closePrice,
+                PctChange = pctChange,
+                Source = "AlphaVantage"
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ AlphaVantage excepção: {ex.Message}");
+            return null;
+        }
     }
 
     public async Task FetchAndCachePriceAsync(string ticker)
     {
-        try
+        var stock = _db.Stocks.FirstOrDefault(s => s.Ticker == ticker);
+        if (stock == null) return;
+
+        var result = await FetchFromTwelveDataAsync(ticker)
+                  ?? await FetchFromFinnhubAsync(ticker)
+                  ?? await FetchFromAlphaVantageAsync(ticker);
+
+        if (result == null)
         {
-            var url = $"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={_apiKey}";
-            var response = await _http.GetStringAsync(url);
-            var json = JsonDocument.Parse(response);
+            Console.WriteLine($"❌ {ticker}: todas as APIs falharam");
+            return;
+        }
 
-            if (!json.RootElement.TryGetProperty("Global Quote", out var quote))
-                return;
-
-            if (!quote.TryGetProperty("05. price", out var priceEl) ||
-                !quote.TryGetProperty("08. previous close", out var prevEl) ||
-                !quote.TryGetProperty("07. latest trading day", out var dateEl))
-                return;
-
-            if (!decimal.TryParse(priceEl.GetString(), System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var price))
-                return;
-
-            if (!decimal.TryParse(prevEl.GetString(), System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var prevClose))
-                return;
-
-            if (!DateOnly.TryParse(dateEl.GetString(), out var date))
-                return;
-
-            var pctChange = prevClose != 0
-                ? Math.Round((price - prevClose) / prevClose * 100, 4)
-                : 0;
-
-            var stock = _db.Stocks.FirstOrDefault(s => s.Ticker == ticker);
-            if (stock == null) return;
-
-            // Verificar se já existe para este dia
-            var exists = _db.StockPrices.Any(p => p.StockId == stock.Id && p.Date == date);
-            if (exists) return;
-
-            var stockPrice = new StockPrice
+        var exists = _db.StockPrices.Any(p => p.StockId == stock.Id && p.Date == result.Date);
+        if (exists)
+        {
+            var existing = _db.StockPrices.First(p => p.StockId == stock.Id && p.Date == result.Date);
+            existing.Close = result.Close;
+            existing.PctChange = result.PctChange;
+        }
+        else
+        {
+            _db.StockPrices.Add(new StockPrice
             {
                 Id = Guid.NewGuid(),
                 StockId = stock.Id,
-                Date = date,
-                Open = prevClose,
-                Close = price,
-                PctChange = pctChange,
-                BeatIndex = false, // calculado depois
+                Date = result.Date,
+                Open = result.Open,
+                Close = result.Close,
+                PctChange = result.PctChange,
+                BeatIndex = false,
                 Dividend = false,
                 CreatedAt = DateTime.UtcNow
-            };
-
-            _db.StockPrices.Add(stockPrice);
-            await _db.SaveChangesAsync();
-
-            Console.WriteLine($"✅ {ticker}: {price} ({pctChange:+0.00;-0.00}%)");
+            });
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Erro ao buscar {ticker}: {ex.Message}");
-        }
+
+        await _db.SaveChangesAsync();
+        Console.WriteLine($"✅ {ticker} ({result.Source}): {result.Close} ({result.PctChange:+0.00;-0.00}%)");
     }
 
-    public async Task FetchAllActiveStocksAsync()
+    public async Task FetchActiveStocksAsync()
     {
-        var stocks = _db.Stocks
-            .Where(s => s.Active && s.Market == "US")
+        var tickers = _db.Stocks
+            .Where(s => s.Active)
             .Select(s => s.Ticker)
-            .Take(5) // começar com 5 para testar
             .ToList();
 
-        foreach (var ticker in stocks)
+        foreach (var ticker in tickers)
         {
             await FetchAndCachePriceAsync(ticker);
-            await Task.Delay(1200); // respeitar limite de 5 calls/min
+            await Task.Delay(8000); // respeitar limite TwelveData: 8 calls/min
         }
     }
+}
+
+public class StockPriceResult
+{
+    public DateOnly Date { get; set; }
+    public decimal Open { get; set; }
+    public decimal Close { get; set; }
+    public decimal PctChange { get; set; }
+    public string Source { get; set; } = string.Empty;
 }
