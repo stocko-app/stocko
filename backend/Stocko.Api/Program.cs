@@ -25,6 +25,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpClient<MarketDataService>();
 builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddScoped<GameWeekService>();
+builder.Services.AddScoped<ScoringService>();
 builder.Services.AddMemoryCache();
 
 // Swagger

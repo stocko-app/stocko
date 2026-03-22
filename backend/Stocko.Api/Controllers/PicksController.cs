@@ -186,6 +186,17 @@ public class PicksController : ControllerBase
             Day = today
         });
     }
+	// GET /api/picks/score/{date} — calcular pontuação para uma data (teste)
+	[HttpGet("score/{date}")]
+	public async Task<IActionResult> CalculateScore(string date, [FromServices] ScoringService scoringService)
+	{
+		if (!DateOnly.TryParse(date, out var scoreDate))
+			return BadRequest("Data inválida. Formato: yyyy-MM-dd");
+
+		await scoringService.CalculateDailyScoresAsync(scoreDate);
+		return Ok($"Pontuação calculada para {scoreDate}");
+	}
+	
 }
 
 public record SubmitPicksRequest(List<PickItem> Picks);
