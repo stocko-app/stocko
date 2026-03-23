@@ -1,6 +1,9 @@
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Data.Seeds;
+using Stocko.Api.Jobs;
 using Stocko.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,13 +23,24 @@ builder.Services.AddScoped<Supabase.Client>(_ =>
     return client;
 });
 
+// Hangfire
+builder.Services.AddHangfire(config =>
+    config.UsePostgreSqlStorage(c =>
+        c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
+builder.Services.AddHangfireServer();
+
 // Services
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddHttpClient<MarketDataService>();
-builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddScoped<GameWeekService>();
 builder.Services.AddScoped<ScoringService>();
+builder.Services.AddHttpClient<MarketDataService>();
+builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddMemoryCache();
+
+// Jobs
+builder.Services.AddScoped<MarketDataJob>();
+builder.Services.AddScoped<DailyScoringJob>();
+builder.Services.AddScoped<AutoPickJob>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -39,6 +53,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHangfireDashboard("/hangfire");
 }
 
 app.UseHttpsRedirection();
@@ -55,5 +70,29 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await StockSeeder.SeedAsync(db);
 }
+
+// Registar cron jobs (timezone Lisboa)
+var lisbonTz = "Europe/Lisbon";
+
+// Buscar preços a cada hora (dias úteis 08h-18h)
+RecurringJob.AddOrUpdate<MarketDataJob>(
+    "market-data-hourly",
+    job => job.ExecuteAsync(),
+    "0 8-18 * * 1-5",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+
+// Calcular pontuação diária (Terça a Sexta às 18h15)
+RecurringJob.AddOrUpdate<DailyScoringJob>(
+    "daily-scoring",
+    job => job.ExecuteAsync(),
+    "15 18 * * 2-6",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+
+// Auto-pick (Segunda às 08h05)
+RecurringJob.AddOrUpdate<AutoPickJob>(
+    "auto-pick",
+    job => job.ExecuteAsync(),
+    "5 8 * * 1",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
 
 app.Run();
