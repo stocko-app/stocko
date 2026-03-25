@@ -6,11 +6,13 @@ namespace Stocko.Api.Services;
 public class ScoringService
 {
     private readonly StockoDbContext _db;
+	private readonly AchievementService _achievementService;
 
-    public ScoringService(StockoDbContext db)
-    {
-        _db = db;
-    }
+	public ScoringService(StockoDbContext db, AchievementService achievementService)
+	{
+		_db = db;
+		_achievementService = achievementService;
+	}
 
     // Fórmula base: MAX(0, MIN(30, variação% + 15))
     public decimal CalculateBasePoints(decimal pctChange)
@@ -203,6 +205,12 @@ public class ScoringService
         }
 
         await _db.SaveChangesAsync();
+        foreach (var userGroup in userPicks)
+        {
+            await _achievementService.CheckAndAwardAsync(userGroup.Key);
+        }
+
+        Console.WriteLine($"✅ Pontuação calculada para {processed} utilizadores em {date}");
         Console.WriteLine($"✅ Pontuação calculada para {processed} utilizadores em {date}");
     }
 }

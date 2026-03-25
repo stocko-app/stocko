@@ -35,6 +35,7 @@ builder.Services.AddScoped<GameWeekService>();
 builder.Services.AddScoped<ScoringService>();
 builder.Services.AddHttpClient<MarketDataService>();
 builder.Services.AddScoped<MarketDataService>();
+builder.Services.AddScoped<AchievementService>();
 builder.Services.AddMemoryCache();
 
 // Jobs
