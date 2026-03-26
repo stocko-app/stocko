@@ -131,6 +131,59 @@ public class RankingsController : ControllerBase
         });
     }
 
+    // GET /api/rankings/tier/{tier} — ranking de um tier específico (só o próprio tier)
+    [HttpGet("tier/{tier}")]
+    public async Task<IActionResult> GetTierRankingByName(string tier)
+    {
+        var userId = HttpContext.Items["UserId"] as Guid?;
+        if (userId == null) return Unauthorized("Token inválido.");
+
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return Unauthorized();
+
+        // Só pode ver o seu próprio tier
+        if (!string.Equals(user.LeagueTier, tier, StringComparison.OrdinalIgnoreCase))
+            return Forbid();
+
+        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+
+        var tierScores = await _db.WeeklyScores
+            .Where(ws => ws.GameWeekId == gameWeek.Id && ws.User.LeagueTier == user.LeagueTier)
+            .Include(ws => ws.User)
+            .OrderByDescending(ws => ws.TotalPoints)
+            .ToListAsync();
+
+        var totalInTier = tierScores.Count;
+
+        for (int i = 0; i < tierScores.Count; i++)
+            tierScores[i].RankTier = i + 1;
+
+        await _db.SaveChangesAsync();
+
+        var rankings = tierScores.Select((ws, i) => new
+        {
+            Rank = i + 1,
+            ws.User.Username,
+            TotalPoints = Math.Round(ws.TotalPoints, 2),
+            IsMe = ws.UserId == userId,
+            IsPromotionZone = totalInTier > 0 && (i + 1) <= Math.Ceiling(totalInTier * 0.2),
+            IsRelegationZone = totalInTier > 0 && (i + 1) > Math.Floor(totalInTier * 0.8)
+        }).ToList();
+
+        var myScore = tierScores.FirstOrDefault(ws => ws.UserId == userId);
+
+        return Ok(new
+        {
+            Tier = user.LeagueTier,
+            TotalInTier = totalInTier,
+            MyRank = myScore?.RankTier ?? 0,
+            MyPoints = myScore != null ? Math.Round(myScore.TotalPoints, 2) : 0,
+            PromotionCutoff = (int)Math.Ceiling(totalInTier * 0.2),
+            RelegationCutoff = (int)Math.Floor(totalInTier * 0.8),
+            Rankings = rankings
+        });
+    }
+
     [HttpGet("week/{gameWeekId}")]
 	public async Task<IActionResult> GetWeekRanking(Guid gameWeekId)
 	{
