@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Stocko.Api.Data;
@@ -11,9 +12,11 @@ using Stocko.Api.Data;
 namespace Stocko.Api.Migrations
 {
     [DbContext(typeof(StockoDbContext))]
-    partial class StockoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326231659_AddBestLeagueTierToUser")]
+    partial class AddBestLeagueTierToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

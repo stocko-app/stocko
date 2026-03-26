@@ -92,6 +92,11 @@ public class MonthlyLeagueJob
                 {
                     var user = monthlyPoints[i].User;
                     user.LeagueTier = nextTier;
+
+                    // Actualizar melhor tier histórico
+                    if (TierOrder.IndexOf(nextTier) > TierOrder.IndexOf(user.BestLeagueTier))
+                        user.BestLeagueTier = nextTier;
+
                     promoted++;
                     await _notificationService.SendTierPromotionAsync(user.Id, nextTier);
                 }
