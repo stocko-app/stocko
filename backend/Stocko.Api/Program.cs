@@ -44,6 +44,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<MarketDataJob>();
 builder.Services.AddScoped<DailyScoringJob>();
 builder.Services.AddScoped<AutoPickJob>();
+builder.Services.AddScoped<AutoCaptainJob>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -96,6 +97,13 @@ RecurringJob.AddOrUpdate<AutoPickJob>(
     "auto-pick",
     job => job.ExecuteAsync(),
     "5 8 * * 1",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+
+// Auto-capitão (Sexta às 00h05)
+RecurringJob.AddOrUpdate<AutoCaptainJob>(
+    "auto-captain",
+    job => job.ExecuteAsync(),
+    "5 0 * * 5",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
 
 app.Run();
