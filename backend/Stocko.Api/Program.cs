@@ -45,6 +45,7 @@ builder.Services.AddScoped<MarketDataJob>();
 builder.Services.AddScoped<DailyScoringJob>();
 builder.Services.AddScoped<AutoPickJob>();
 builder.Services.AddScoped<AutoCaptainJob>();
+builder.Services.AddScoped<DeadlineReminderJob>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -97,6 +98,13 @@ RecurringJob.AddOrUpdate<AutoPickJob>(
     "auto-pick",
     job => job.ExecuteAsync(),
     "5 8 * * 1",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+
+// Deadline reminder (Segunda às 06h00 — 2h antes do deadline das 08h00)
+RecurringJob.AddOrUpdate<DeadlineReminderJob>(
+    "deadline-reminder",
+    job => job.ExecuteAsync(),
+    "0 6 * * 1",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
 
 // Auto-capitão (Sexta às 00h05)
