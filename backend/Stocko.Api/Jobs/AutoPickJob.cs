@@ -8,11 +8,13 @@ public class AutoPickJob
 {
     private readonly StockoDbContext _db;
     private readonly GameWeekService _gameWeekService;
+    private readonly NotificationService _notificationService;
 
-    public AutoPickJob(StockoDbContext db, GameWeekService gameWeekService)
+    public AutoPickJob(StockoDbContext db, GameWeekService gameWeekService, NotificationService notificationService)
     {
         _db = db;
         _gameWeekService = gameWeekService;
+        _notificationService = notificationService;
     }
 
     public async Task ExecuteAsync()
@@ -75,6 +77,10 @@ public class AutoPickJob
 
             await _db.Picks.AddRangeAsync(newPicks);
             autoPickCount++;
+
+            var user = await _db.Users.FindAsync(userId);
+            if (user != null)
+                await _notificationService.SendAutoPickConfirmationAsync(userId, user.StreakWeeks);
         }
 
         await _db.SaveChangesAsync();
