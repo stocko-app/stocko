@@ -46,6 +46,7 @@ builder.Services.AddScoped<DailyScoringJob>();
 builder.Services.AddScoped<AutoPickJob>();
 builder.Services.AddScoped<AutoCaptainJob>();
 builder.Services.AddScoped<DeadlineReminderJob>();
+builder.Services.AddScoped<CaptainReminderJob>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -105,6 +106,13 @@ RecurringJob.AddOrUpdate<DeadlineReminderJob>(
     "deadline-reminder",
     job => job.ExecuteAsync(),
     "0 6 * * 1",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+
+// Captain reminder (Seg-Qui às 08h15 — só para quem ainda não usou capitão)
+RecurringJob.AddOrUpdate<CaptainReminderJob>(
+    "captain-reminder",
+    job => job.ExecuteAsync(),
+    "15 8 * * 1-4",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
 
 // Auto-capitão (Sexta às 00h05)
