@@ -189,6 +189,28 @@ public class NotificationService
         );
     }
 
+    // Notificação de promoção de tier
+    public async Task SendTierPromotionAsync(Guid userId, string newTier)
+    {
+        var tierNames = new Dictionary<string, string>
+        {
+            { "silver", "Prata 🥈" },
+            { "gold", "Ouro 🥇" },
+            { "platinum", "Platina 💎" },
+            { "diamond", "Diamante 💠" },
+            { "elite", "Elite 👑" }
+        };
+
+        var tierName = tierNames.GetValueOrDefault(newTier, newTier);
+
+        await SendToUserAsync(
+            userId,
+            $"Subiste para {tierName}!",
+            "A competição vai ser mais dura — estás preparado? 🎉",
+            new { screen = "Rankings" }
+        );
+    }
+
     // ── MÉTODOS INTERNOS ──────────────────────────────────────────────
 
     private async Task SendAsync(string token, string title, string body, object? data = null)
