@@ -47,6 +47,7 @@ builder.Services.AddScoped<AutoPickJob>();
 builder.Services.AddScoped<AutoCaptainJob>();
 builder.Services.AddScoped<DeadlineReminderJob>();
 builder.Services.AddScoped<CaptainReminderJob>();
+builder.Services.AddScoped<StreakRiskJob>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -99,6 +100,13 @@ RecurringJob.AddOrUpdate<AutoPickJob>(
     "auto-pick",
     job => job.ExecuteAsync(),
     "5 8 * * 1",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+
+// Streak em risco (Domingo às 20h00 — só para streak > 3 sem draft)
+RecurringJob.AddOrUpdate<StreakRiskJob>(
+    "streak-risk",
+    job => job.ExecuteAsync(),
+    "0 20 * * 0",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
 
 // Deadline reminder (Segunda às 06h00 — 2h antes do deadline das 08h00)
