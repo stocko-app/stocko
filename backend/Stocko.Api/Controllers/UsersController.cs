@@ -115,6 +115,24 @@ public class UsersController : ControllerBase
         return Ok(new { Message = "Push token actualizado." });
     }
 
+    // GET /api/users/me/tier-history — tier actual e melhor tier histórico
+    [HttpGet("me/tier-history")]
+    public async Task<IActionResult> GetTierHistory()
+    {
+        var userId = HttpContext.Items["UserId"] as Guid?;
+        if (userId == null) return Unauthorized("Token inválido.");
+
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return Unauthorized();
+
+        return Ok(new
+        {
+            CurrentTier = user.LeagueTier,
+            BestTier = user.BestLeagueTier,
+            IsAtBest = user.LeagueTier == user.BestLeagueTier
+        });
+    }
+
     // GET /api/users/me/achievements — conquistas do utilizador
     [HttpGet("me/achievements")]
     public async Task<IActionResult> GetAchievements()
