@@ -48,6 +48,7 @@ builder.Services.AddScoped<AutoCaptainJob>();
 builder.Services.AddScoped<DeadlineReminderJob>();
 builder.Services.AddScoped<CaptainReminderJob>();
 builder.Services.AddScoped<StreakRiskJob>();
+builder.Services.AddScoped<MonthlyLeagueJob>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -100,6 +101,13 @@ RecurringJob.AddOrUpdate<AutoPickJob>(
     "auto-pick",
     job => job.ExecuteAsync(),
     "5 8 * * 1",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+
+// Promoção/relegação mensal (dia 1 de cada mês às 01h00)
+RecurringJob.AddOrUpdate<MonthlyLeagueJob>(
+    "monthly-league",
+    job => job.ExecuteAsync(),
+    "0 1 1 * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
 
 // Streak em risco (Domingo às 20h00 — só para streak > 3 sem draft)
