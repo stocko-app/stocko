@@ -36,6 +36,8 @@ builder.Services.AddScoped<ScoringService>();
 builder.Services.AddHttpClient<MarketDataService>();
 builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddScoped<AchievementService>();
+builder.Services.AddHttpClient<NotificationService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.AddMemoryCache();
 
 // Jobs
