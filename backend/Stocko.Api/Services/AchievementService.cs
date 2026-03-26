@@ -6,10 +6,12 @@ namespace Stocko.Api.Services;
 public class AchievementService
 {
     private readonly StockoDbContext _db;
+    private readonly NotificationService _notificationService;
 
-    public AchievementService(StockoDbContext db)
+    public AchievementService(StockoDbContext db, NotificationService notificationService)
     {
         _db = db;
+        _notificationService = notificationService;
     }
 
     public async Task CheckAndAwardAsync(Guid userId)
@@ -39,7 +41,10 @@ public class AchievementService
             await _db.SaveChangesAsync();
 
             foreach (var a in newAchievements)
+            {
                 Console.WriteLine($"🏅 Achievement desbloqueado: {userId} → {a.Type}");
+                await _notificationService.SendAchievementAsync(userId, a.Type);
+            }
         }
     }
 
