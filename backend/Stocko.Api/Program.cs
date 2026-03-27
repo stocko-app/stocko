@@ -38,6 +38,8 @@ builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddScoped<AchievementService>();
 builder.Services.AddHttpClient<NotificationService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddHttpClient<NewsService>();
+builder.Services.AddScoped<NewsService>();
 builder.Services.AddMemoryCache();
 
 // Jobs

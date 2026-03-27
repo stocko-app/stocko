@@ -100,10 +100,35 @@ public class StocksController : ControllerBase
         return Ok(stock);
     }
 	
-	[HttpGet("fetch/{ticker}")]
-	public async Task<IActionResult> FetchPrice(string ticker, [FromServices] MarketDataService marketData)
-	{
-		await marketData.FetchAndCachePriceAsync(ticker);
-		return Ok($"Preço de {ticker} actualizado.");
-	}
+    [HttpGet("fetch/{ticker}")]
+    public async Task<IActionResult> FetchPrice(string ticker, [FromServices] MarketDataService marketData)
+    {
+        await marketData.FetchAndCachePriceAsync(ticker);
+        return Ok($"Preço de {ticker} actualizado.");
+    }
+
+    // GET /api/stocks/news — notícias das acções do utilizador (picks da semana actual)
+    [HttpGet("news")]
+    public async Task<IActionResult> GetNews(
+        [FromServices] NewsService newsService,
+        [FromServices] GameWeekService gameWeekService)
+    {
+        var userId = HttpContext.Items["UserId"] as Guid?;
+        if (userId == null) return Unauthorized("Token inválido.");
+
+        var gameWeek = gameWeekService.GetOrCreateCurrentWeek();
+
+        var tickers = await _db.Picks
+            .Where(p => p.UserId == userId && p.GameWeekId == gameWeek.Id)
+            .Include(p => p.Stock)
+            .Select(p => p.Stock.Ticker)
+            .ToListAsync();
+
+        if (!tickers.Any())
+            return Ok(new { News = new List<object>() });
+
+        var news = await newsService.GetNewsForTickersAsync(tickers);
+
+        return Ok(new { News = news });
+    }
 }
