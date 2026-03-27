@@ -131,39 +131,6 @@ public class ScoringService
                 pickCount++;
             }
 
-            // Bónus carteira vs S&P500
-            if (pickCount > 0)
-            {
-                var portfolioAvg = portfolioTotal / pickCount;
-                if (portfolioAvg > sp500Change)
-                {
-                    // Adicionar +1 ao WeeklyScore do utilizador
-                    var weeklyScore = _db.WeeklyScores
-                        .FirstOrDefault(ws => ws.UserId == userId && ws.GameWeekId == gameWeek.Id);
-
-                    if (weeklyScore == null)
-                    {
-                        weeklyScore = new WeeklyScore
-                        {
-                            Id = Guid.NewGuid(),
-                            UserId = userId,
-                            GameWeekId = gameWeek.Id,
-                            TotalPoints = 0,
-                            RankGlobal = 0,
-                            RankTier = 0,
-                            Percentile = 0,
-                            IndexBonusTotal = 1,
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        _db.WeeklyScores.Add(weeklyScore);
-                    }
-                    else
-                    {
-                        weeklyScore.IndexBonusTotal += 1;
-                    }
-                }
-            }
-
             processed++;
         }
 
@@ -176,9 +143,36 @@ public class ScoringService
                              picks.Select(p => p.Id).Contains(ds.PickId))
                 .Sum(ds => ds.Total);
 
-            var indexBonus = _db.WeeklyScores
-                .FirstOrDefault(ws => ws.UserId == userId && ws.GameWeekId == gameWeek.Id)
-                ?.IndexBonusTotal ?? 0;
+            // Recalcular IndexBonusTotal de raiz (idempotente)
+            // Conta quantos dias desta semana a carteira do utilizador bateu o S&P500
+            var userPickStockIds = userGroup.Select(p => p.StockId).ToList();
+
+            var datesWithPrices = _db.StockPrices
+                .Where(sp => userPickStockIds.Contains(sp.StockId) &&
+                             sp.Date >= gameWeek.WeekStart &&
+                             sp.Date <= date)
+                .Select(sp => sp.Date)
+                .Distinct()
+                .ToList();
+
+            int indexBonus = 0;
+            foreach (var d in datesWithPrices)
+            {
+                var dayPrices = _db.StockPrices
+                    .Where(sp => userPickStockIds.Contains(sp.StockId) && sp.Date == d)
+                    .ToList();
+
+                if (!dayPrices.Any()) continue;
+
+                var dayPortfolioAvg = dayPrices.Average(sp => sp.PctChange);
+
+                var sp500DayChange = sp500Stock != null
+                    ? (_db.StockPrices.FirstOrDefault(sp => sp.StockId == sp500Stock.Id && sp.Date == d)?.PctChange ?? 0)
+                    : 0m;
+
+                if (dayPortfolioAvg > sp500DayChange)
+                    indexBonus++;
+            }
 
             var weeklyScore = _db.WeeklyScores
                 .FirstOrDefault(ws => ws.UserId == userId && ws.GameWeekId == gameWeek.Id);
@@ -200,6 +194,7 @@ public class ScoringService
             }
             else
             {
+                weeklyScore.IndexBonusTotal = indexBonus;
                 weeklyScore.TotalPoints = totalPoints + indexBonus;
             }
         }
