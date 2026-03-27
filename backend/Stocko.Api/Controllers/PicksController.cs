@@ -241,6 +241,60 @@ public class PicksController : ControllerBase
         });
     }
 
+    // GET /api/picks/weekly-chart — pontos por dia da semana actual (para mini-gráfico)
+    [HttpGet("weekly-chart")]
+    public async Task<IActionResult> GetWeeklyChart()
+    {
+        var userId = HttpContext.Items["UserId"] as Guid?;
+        if (userId == null) return Unauthorized("Token inválido.");
+
+        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+
+        var dailyScores = await _db.DailyScores
+            .Where(ds => ds.UserId == userId &&
+                         ds.Date >= gameWeek.WeekStart &&
+                         ds.Date <= gameWeek.WeekEnd)
+            .GroupBy(ds => ds.Date)
+            .Select(g => new
+            {
+                Date = g.Key,
+                Points = Math.Round(g.Sum(ds => ds.Total), 2)
+            })
+            .OrderBy(x => x.Date)
+            .ToListAsync();
+
+        // Incluir todos os dias úteis da semana (Seg-Sex), mesmo sem pontos ainda
+        var allDays = Enumerable.Range(0, 5)
+            .Select(i => gameWeek.WeekStart.AddDays(i))
+            .Select(d => new
+            {
+                Date = d,
+                Points = dailyScores.FirstOrDefault(ds => ds.Date == d)?.Points ?? 0m
+            })
+            .ToList();
+
+        var cumulative = 0m;
+        var chart = allDays.Select(d =>
+        {
+            cumulative += d.Points;
+            return new
+            {
+                d.Date,
+                DayPoints = d.Points,
+                Cumulative = Math.Round(cumulative, 2)
+            };
+        }).ToList();
+
+        return Ok(new
+        {
+            GameWeekId = gameWeek.Id,
+            WeekStart = gameWeek.WeekStart,
+            WeekEnd = gameWeek.WeekEnd,
+            TotalPoints = Math.Round(cumulative, 2),
+            Days = chart
+        });
+    }
+
 	// GET /api/picks/score/{date} — calcular pontuação para uma data (teste)
 	[HttpGet("score/{date}")]
 	public async Task<IActionResult> CalculateScore(string date, [FromServices] ScoringService scoringService)
