@@ -55,8 +55,19 @@ public class AuthController : ControllerBase
         });
     }
 	
-	[HttpGet("me")]
-	public IActionResult Me()
+    // GET /api/auth/check-username/{username} — verificar disponibilidade do username
+    [HttpGet("check-username/{username}")]
+    public IActionResult CheckUsername(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
+            return BadRequest("Username deve ter pelo menos 3 caracteres.");
+
+        var exists = _authService.UsernameExists(username);
+        return Ok(new { Available = !exists });
+    }
+
+    [HttpGet("me")]
+    public IActionResult Me()
 	{
 		var userId = HttpContext.Items["UserId"];
 		if (userId == null)

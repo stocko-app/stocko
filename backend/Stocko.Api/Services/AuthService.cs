@@ -62,6 +62,11 @@ public class AuthService
             UserId = Guid.Parse(response.User.Id!)
         };
     }
+
+    public bool UsernameExists(string username)
+    {
+        return _db.Users.Any(u => u.Username.ToLower() == username.ToLower());
+    }
 }
 
 public class AuthResult
