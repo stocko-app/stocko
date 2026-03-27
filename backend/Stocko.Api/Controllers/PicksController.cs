@@ -186,6 +186,61 @@ public class PicksController : ControllerBase
             Day = today
         });
     }
+    // GET /api/picks/daily-summary — resumo do dia actual com pontos de cada pick
+    [HttpGet("daily-summary")]
+    public async Task<IActionResult> GetDailySummary()
+    {
+        var userId = HttpContext.Items["UserId"] as Guid?;
+        if (userId == null) return Unauthorized("Token inválido.");
+
+        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var picks = await _db.Picks
+            .Where(p => p.UserId == userId && p.GameWeekId == gameWeek.Id)
+            .Include(p => p.Stock)
+            .ThenInclude(s => s.Prices.Where(sp => sp.Date == today))
+            .ToListAsync();
+
+        var result = picks.Select(p =>
+        {
+            var todayScore = _db.DailyScores
+                .FirstOrDefault(ds => ds.PickId == p.Id && ds.Date == today);
+
+            var todayPrice = p.Stock.Prices.FirstOrDefault();
+
+            return new
+            {
+                p.Stock.Ticker,
+                p.Stock.Name,
+                p.IsCaptainDraft,
+                CaptainActivatedDay = p.CaptainActivatedDay,
+                IsCaptainToday = p.CaptainActivatedDay == today,
+                PctChange = todayPrice?.PctChange ?? 0,
+                TodayPoints = todayScore?.Total ?? 0,
+                TodayBase = todayScore?.BasePoints ?? 0,
+                TodayBonus = todayScore?.DayPositiveBonus ?? 0,
+                TodayCaptainBonus = todayScore?.CaptainBonus ?? 0,
+                WeekPoints = _db.DailyScores
+                    .Where(ds => ds.PickId == p.Id)
+                    .Sum(ds => ds.Total)
+            };
+        }).ToList();
+
+        var indexBonus = _db.DailyScores
+            .Where(ds => ds.UserId == userId && ds.Date == today)
+            .Any() ? 1 : 0; // simplificado — o bónus índice é calculado no ScoringService
+
+        return Ok(new
+        {
+            Date = today,
+            GameWeekId = gameWeek.Id,
+            Picks = result,
+            TotalTodayPoints = result.Sum(p => p.TodayPoints),
+            TotalWeekPoints = result.Sum(p => p.WeekPoints)
+        });
+    }
+
 	// GET /api/picks/score/{date} — calcular pontuação para uma data (teste)
 	[HttpGet("score/{date}")]
 	public async Task<IActionResult> CalculateScore(string date, [FromServices] ScoringService scoringService)
