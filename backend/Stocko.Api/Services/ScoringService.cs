@@ -211,6 +211,41 @@ public class ScoringService
         }
 
         Console.WriteLine($"✅ Pontuação calculada para {processed} utilizadores em {date}");
-        Console.WriteLine($"✅ Pontuação calculada para {processed} utilizadores em {date}");
+    }
+
+    // Actualizar streaks no fim de semana (chamar apenas na Sexta)
+    public async Task UpdateStreaksAsync(Guid gameWeekId)
+    {
+        var allUsers = _db.Users.ToList();
+
+        foreach (var user in allUsers)
+        {
+            var hasManualPicks = _db.Picks.Any(p =>
+                p.UserId == user.Id &&
+                p.GameWeekId == gameWeekId &&
+                !p.IsAuto);
+
+            var hasAutoPicks = _db.Picks.Any(p =>
+                p.UserId == user.Id &&
+                p.GameWeekId == gameWeekId &&
+                p.IsAuto);
+
+            if (hasManualPicks)
+            {
+                // Jogou manualmente — incrementar streak
+                user.StreakWeeks += 1;
+                if (user.StreakWeeks > user.StreakBest)
+                    user.StreakBest = user.StreakWeeks;
+            }
+            else if (!hasAutoPicks)
+            {
+                // Sem picks — streak reseta
+                user.StreakWeeks = 0;
+            }
+            // Com só auto-pick: streak mantém-se (não faz nada)
+        }
+
+        await _db.SaveChangesAsync();
+        Console.WriteLine($"✅ Streaks actualizados para {allUsers.Count} utilizadores");
     }
 }

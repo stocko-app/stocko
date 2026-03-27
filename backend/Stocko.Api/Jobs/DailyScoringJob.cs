@@ -29,11 +29,13 @@ public class DailyScoringJob
         Console.WriteLine($"🕐 DailyScoringJob iniciado: {today}");
         await _scoringService.CalculateDailyScoresAsync(today);
 
-        // Notificação de resultado semanal apenas na Sexta (fim de semana de jogo)
+        // Actualizar streaks e enviar resultado apenas na Sexta
         if (today.DayOfWeek == DayOfWeek.Friday)
         {
             var gameWeekService = new GameWeekService(_db);
             var currentWeek = gameWeekService.GetOrCreateCurrentWeek();
+
+            await _scoringService.UpdateStreaksAsync(currentWeek.Id);
 
             var scores = _db.WeeklyScores
                 .Where(ws => ws.GameWeekId == currentWeek.Id)
