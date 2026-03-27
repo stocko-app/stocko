@@ -118,7 +118,7 @@ public class PicksController : ControllerBase
                 p.Stock.Sector,
                 p.IsCaptainDraft,
                 p.CaptainActivatedDay,
-                p.Points,
+                WeekPoints = Math.Round(p.DailyScores.Sum(ds => ds.Total), 2),
                 p.IsAuto,
                 LatestPrice = p.Stock.Prices
                     .OrderByDescending(x => x.Date)
