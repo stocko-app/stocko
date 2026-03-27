@@ -79,63 +79,59 @@ using (var scope = app.Services.CreateScope())
     await StockSeeder.SeedAsync(db);
 }
 
-// Registar cron jobs (timezone Lisboa)
-var lisbonTz = "Europe/Lisbon";
+// Registar cron jobs via DI (evita o problema do JobStorage.Current em produção)
+using (var scope = app.Services.CreateScope())
+{
+    var jobs = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    var lisbonTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
 
-// Buscar preços a cada hora (dias úteis 08h-18h)
-RecurringJob.AddOrUpdate<MarketDataJob>(
-    "market-data-hourly",
-    job => job.ExecuteAsync(),
-    "0 8-18 * * 1-5",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<MarketDataJob>(
+        "market-data-hourly",
+        job => job.ExecuteAsync(),
+        "0 8-18 * * 1-5",
+        new RecurringJobOptions { TimeZone = lisbonTz });
 
-// Calcular pontuação diária (Terça a Sexta às 18h15)
-RecurringJob.AddOrUpdate<DailyScoringJob>(
-    "daily-scoring",
-    job => job.ExecuteAsync(),
-    "15 18 * * 2-6",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<DailyScoringJob>(
+        "daily-scoring",
+        job => job.ExecuteAsync(),
+        "15 18 * * 2-6",
+        new RecurringJobOptions { TimeZone = lisbonTz });
 
-// Auto-pick (Segunda às 08h05)
-RecurringJob.AddOrUpdate<AutoPickJob>(
-    "auto-pick",
-    job => job.ExecuteAsync(),
-    "5 8 * * 1",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<AutoPickJob>(
+        "auto-pick",
+        job => job.ExecuteAsync(),
+        "5 8 * * 1",
+        new RecurringJobOptions { TimeZone = lisbonTz });
 
-// Promoção/relegação mensal (dia 1 de cada mês às 01h00)
-RecurringJob.AddOrUpdate<MonthlyLeagueJob>(
-    "monthly-league",
-    job => job.ExecuteAsync(),
-    "0 1 1 * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<MonthlyLeagueJob>(
+        "monthly-league",
+        job => job.ExecuteAsync(),
+        "0 1 1 * *",
+        new RecurringJobOptions { TimeZone = lisbonTz });
 
-// Streak em risco (Domingo às 20h00 — só para streak > 3 sem draft)
-RecurringJob.AddOrUpdate<StreakRiskJob>(
-    "streak-risk",
-    job => job.ExecuteAsync(),
-    "0 20 * * 0",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<StreakRiskJob>(
+        "streak-risk",
+        job => job.ExecuteAsync(),
+        "0 20 * * 0",
+        new RecurringJobOptions { TimeZone = lisbonTz });
 
-// Deadline reminder (Segunda às 06h00 — 2h antes do deadline das 08h00)
-RecurringJob.AddOrUpdate<DeadlineReminderJob>(
-    "deadline-reminder",
-    job => job.ExecuteAsync(),
-    "0 6 * * 1",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<DeadlineReminderJob>(
+        "deadline-reminder",
+        job => job.ExecuteAsync(),
+        "0 6 * * 1",
+        new RecurringJobOptions { TimeZone = lisbonTz });
 
-// Captain reminder (Seg-Qui às 08h15 — só para quem ainda não usou capitão)
-RecurringJob.AddOrUpdate<CaptainReminderJob>(
-    "captain-reminder",
-    job => job.ExecuteAsync(),
-    "15 8 * * 1-4",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<CaptainReminderJob>(
+        "captain-reminder",
+        job => job.ExecuteAsync(),
+        "15 8 * * 1-4",
+        new RecurringJobOptions { TimeZone = lisbonTz });
 
-// Auto-capitão (Sexta às 00h05)
-RecurringJob.AddOrUpdate<AutoCaptainJob>(
-    "auto-captain",
-    job => job.ExecuteAsync(),
-    "5 0 * * 5",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(lisbonTz) });
+    jobs.AddOrUpdate<AutoCaptainJob>(
+        "auto-captain",
+        job => job.ExecuteAsync(),
+        "5 0 * * 5",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+}
 
 app.Run();
