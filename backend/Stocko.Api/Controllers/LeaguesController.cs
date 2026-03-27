@@ -213,6 +213,63 @@ public class LeaguesController : ControllerBase
         });
     }
 
+    // GET /api/leagues/{id}/history — histórico semanal da liga
+    [HttpGet("{id}/history")]
+    public async Task<IActionResult> GetLeagueHistory(Guid id)
+    {
+        var userId = HttpContext.Items["UserId"] as Guid?;
+        if (userId == null) return Unauthorized("Token inválido.");
+
+        var isMember = _db.LeagueMembers
+            .Any(lm => lm.LeagueId == id && lm.UserId == userId);
+        if (!isMember) return Forbid();
+
+        var league = await _db.Leagues.FindAsync(id);
+        if (league == null) return NotFound("Liga não encontrada.");
+
+        var memberIds = await _db.LeagueMembers
+            .Where(lm => lm.LeagueId == id)
+            .Select(lm => lm.UserId)
+            .ToListAsync();
+
+        var weeks = await _db.GameWeeks
+            .OrderByDescending(gw => gw.WeekStart)
+            .Take(20)
+            .ToListAsync();
+
+        var history = weeks.Select(gw =>
+        {
+            var scores = _db.WeeklyScores
+                .Where(ws => ws.GameWeekId == gw.Id && memberIds.Contains(ws.UserId))
+                .Include(ws => ws.User)
+                .OrderByDescending(ws => ws.TotalPoints)
+                .ToList();
+
+            return new
+            {
+                gw.WeekStart,
+                gw.WeekEnd,
+                Rankings = scores.Select((ws, i) => new
+                {
+                    Rank = i + 1,
+                    ws.User.Username,
+                    TotalPoints = Math.Round(ws.TotalPoints, 2),
+                    IsMe = ws.UserId == userId
+                }).ToList()
+            };
+        })
+        .Where(w => w.Rankings.Any())
+        .ToList();
+
+        return Ok(new
+        {
+            league.Id,
+            league.Name,
+            TotalMembers = memberIds.Count,
+            History = history
+        });
+    }
+
     private static string GenerateInviteCode()
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

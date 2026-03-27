@@ -34,6 +34,7 @@ public class UsersController : ControllerBase
                 u.Email,
                 u.Plan,
                 u.LeagueTier,
+                u.BestLeagueTier,
                 u.StreakWeeks,
                 u.StreakBest,
                 u.CreatedAt,
