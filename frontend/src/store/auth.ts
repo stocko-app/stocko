@@ -16,10 +16,12 @@ export const useAuth = create<AuthState>()(
       username: null,
       setAuth: (token, username) => {
         localStorage.setItem("stocko_token", token);
+        document.cookie = `stocko_token=${token}; path=/; max-age=604800; SameSite=Lax`;
         set({ token, username });
       },
       logout: () => {
         localStorage.removeItem("stocko_token");
+        document.cookie = "stocko_token=; path=/; max-age=0";
         set({ token: null, username: null });
       },
       isAuthenticated: () => !!get().token,

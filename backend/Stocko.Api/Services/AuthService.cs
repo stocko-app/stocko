@@ -20,7 +20,15 @@ public class AuthService
         if (usernameExists)
             return new AuthResult { Success = false, Error = "Username já está em uso." };
 
-        var response = await _supabase.Auth.SignUp(email, password);
+        Supabase.Gotrue.Session? response;
+        try
+        {
+            response = await _supabase.Auth.SignUp(email, password);
+        }
+        catch
+        {
+            return new AuthResult { Success = false, Error = "Erro ao criar conta. Tenta novamente." };
+        }
 
         if (response?.User == null)
             return new AuthResult { Success = false, Error = "Erro ao criar conta." };
@@ -49,18 +57,25 @@ public class AuthService
 
     public async Task<AuthResult> LoginAsync(string email, string password)
     {
-        var response = await _supabase.Auth.SignIn(email, password);
-
-        if (response?.User == null)
-            return new AuthResult { Success = false, Error = "Credenciais inválidas." };
-
-        return new AuthResult
+        try
         {
-            Success = true,
-            AccessToken = response.AccessToken,
-            RefreshToken = response.RefreshToken,
-            UserId = Guid.Parse(response.User.Id!)
-        };
+            var response = await _supabase.Auth.SignIn(email, password);
+
+            if (response?.User == null)
+                return new AuthResult { Success = false, Error = "Credenciais inválidas." };
+
+            return new AuthResult
+            {
+                Success = true,
+                AccessToken = response.AccessToken,
+                RefreshToken = response.RefreshToken,
+                UserId = Guid.Parse(response.User.Id!)
+            };
+        }
+        catch
+        {
+            return new AuthResult { Success = false, Error = "Email ou password incorrectos." };
+        }
     }
 
     public bool UsernameExists(string username)

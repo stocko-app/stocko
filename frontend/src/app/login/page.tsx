@@ -27,11 +27,11 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await api.post<{ token: string; username: string }>(
+      const res = await api.post<{ accessToken: string; userId: string }>(
         "/api/auth/login",
         form
       );
-      setAuth(res.token, res.username);
+      setAuth(res.accessToken, form.email);
       router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Email ou password incorrectos.");

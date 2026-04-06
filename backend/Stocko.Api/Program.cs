@@ -82,8 +82,8 @@ if (app.Environment.IsDevelopment())
     app.UseHangfireDashboard("/hangfire");
 }
 
-app.UseHttpsRedirection();
 app.UseCors("WebPolicy");
+app.UseHttpsRedirection();
 app.UseMiddleware<SupabaseAuthMiddleware>();
 app.MapControllers();
 
