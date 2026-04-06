@@ -5,3 +5,4 @@
   "installCommand": "npm install",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- frontend/"
 }
+
