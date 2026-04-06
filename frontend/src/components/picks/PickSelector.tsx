@@ -78,7 +78,7 @@ export default function PickSelector({ maxPicks, onSuccess, onCancel }: Props) {
   }
 
   async function handleSubmit() {
-    if (selected.length === 0) return;
+    if (selected.length !== maxPicks) return;
     setSubmitting(true);
     setError("");
     try {
@@ -96,16 +96,26 @@ export default function PickSelector({ maxPicks, onSuccess, onCancel }: Props) {
       {/* picks seleccionados */}
       <div className="glass rounded-xl p-4 space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-semibold">
-            Picks seleccionados ({selected.length}/{maxPicks})
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">
+              Picks seleccionados
+            </span>
+            <span className={cn(
+              "text-xs font-bold px-2 py-0.5 rounded-full",
+              selected.length === maxPicks
+                ? "bg-success/20 text-success"
+                : "bg-gold-500/20 text-gold-400"
+            )}>
+              {selected.length}/{maxPicks}
+            </span>
+          </div>
           <span className="text-xs text-slate-500">
             Marca ⭐ para capitão
           </span>
         </div>
 
         {selected.length === 0 ? (
-          <p className="text-sm text-slate-500">Ainda não escolheste nenhuma acção.</p>
+          <p className="text-sm text-slate-500">Escolhe exactamente {maxPicks} acções para continuar.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {selected.map((p) => (
@@ -226,7 +236,7 @@ export default function PickSelector({ maxPicks, onSuccess, onCancel }: Props) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={selected.length === 0 || submitting}
+          disabled={selected.length !== maxPicks || submitting}
           className="flex-1 py-3 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {submitting ? (
@@ -234,8 +244,10 @@ export default function PickSelector({ maxPicks, onSuccess, onCancel }: Props) {
               <Loader2 className="w-4 h-4 animate-spin" />
               A submeter...
             </>
+          ) : selected.length < maxPicks ? (
+            `Faltam ${maxPicks - selected.length} pick${maxPicks - selected.length !== 1 ? "s" : ""}`
           ) : (
-            `Confirmar ${selected.length} pick${selected.length !== 1 ? "s" : ""}`
+            `Confirmar ${maxPicks} picks`
           )}
         </button>
       </div>

@@ -31,13 +31,10 @@ public class PicksController : ControllerBase
 
         var (gameWeek, isNextWeek) = _gameWeekService.GetDraftTargetWeek();
 
-        // Verificar limite de picks por plano
-        var maxPicks = user.Plan == "plus" || user.Plan == "pro" ? 5 : 3;
-        if (request.Picks.Count > maxPicks)
-            return BadRequest($"O teu plano permite no máximo {maxPicks} picks.");
+        const int maxPicks = 5;
 
-        if (request.Picks.Count == 0)
-            return BadRequest("Tens de escolher pelo menos 1 pick.");
+        if (request.Picks.Count != maxPicks)
+            return BadRequest($"Tens de escolher exactamente {maxPicks} picks.");
 
         // Verificar capitão
         var captainCount = request.Picks.Count(p => p.IsCaptainDraft);
