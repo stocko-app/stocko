@@ -15,12 +15,19 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const [usernameTimer, setUsernameTimer] = useState<NodeJS.Timeout | null>(null);
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "email") {
+      setEmailValid(value.length > 0 ? EMAIL_RE.test(value) : null);
+    }
 
     if (name === "username") {
       setUsernameStatus("idle");
@@ -46,6 +53,10 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (usernameStatus === "taken") return;
+    if (!EMAIL_RE.test(form.email)) {
+      setEmailValid(false);
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -126,15 +137,24 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
                 Email
               </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="o@teu.email"
-                required
-                className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all"
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="o@teu.email"
+                  required
+                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all pr-10"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {emailValid === true && <CheckCircle className="w-4 h-4 text-success" />}
+                  {emailValid === false && <XCircle className="w-4 h-4 text-danger" />}
+                </div>
+              </div>
+              {emailValid === false && (
+                <p className="text-danger text-xs mt-1">Endereço de email inválido.</p>
+              )}
             </div>
 
             {/* password */}
@@ -173,7 +193,7 @@ export default function RegisterPage() {
             {/* submit */}
             <button
               type="submit"
-              disabled={loading || usernameStatus === "taken"}
+              disabled={loading || usernameStatus === "taken" || emailValid === false}
               className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2"
             >
               {loading ? (
