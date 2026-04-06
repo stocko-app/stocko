@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import PickSelector from "@/components/picks/PickSelector";
@@ -33,6 +33,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showPicker, setShowPicker] = useState(false);
+  const [captainTicker, setCaptainTicker] = useState("");
+  const [captainLoading, setCaptainLoading] = useState(false);
+  const [captainError, setCaptainError] = useState("");
+  const [captainSuccess, setCaptainSuccess] = useState("");
 
   function loadWeek() {
     setLoading(true);
@@ -43,6 +47,22 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { loadWeek(); }, []);
+
+  async function activateCaptain() {
+    if (!captainTicker) return;
+    setCaptainLoading(true);
+    setCaptainError("");
+    setCaptainSuccess("");
+    try {
+      const res = await api.post<{ message: string }>("/api/picks/captain", { ticker: captainTicker });
+      setCaptainSuccess(res.message);
+      loadWeek();
+    } catch (e: unknown) {
+      setCaptainError(e instanceof Error ? e.message : "Erro ao activar capitão.");
+    } finally {
+      setCaptainLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -76,6 +96,92 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
+
+      {/* card activação de capitão */}
+      {(() => {
+        if (!data?.deadlinePassed || !data.picks.length) return null;
+        const captainDraft = data.picks.find((p) => p.isCaptainDraft);
+        if (!captainDraft) return null;
+        const alreadyActivated = data.picks.some((p) => p.captainActivatedDay !== null);
+        const todayDay = new Date().getDay(); // 0=Dom, 1=Seg, ..., 5=Sex, 6=Sab
+        const canActivate = !alreadyActivated && todayDay >= 1 && todayDay <= 4;
+
+        if (alreadyActivated) {
+          const activatedPick = data.picks.find((p) => p.captainActivatedDay !== null);
+          return (
+            <div className="glass rounded-2xl p-4 flex items-center gap-3 border border-gold-500/20">
+              <ShieldCheck className="w-5 h-5 text-gold-400 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-gold-300">Capitão activado</p>
+                <p className="text-xs text-slate-400">
+                  {activatedPick?.ticker} · {new Date(activatedPick!.captainActivatedDay!).toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "short" })}
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        if (!canActivate) {
+          return (
+            <div className="glass rounded-2xl p-4 flex items-center gap-3 border border-white/5">
+              <Star className="w-5 h-5 text-slate-500 shrink-0" />
+              <p className="text-sm text-slate-400">
+                {todayDay === 5
+                  ? "Hoje é Sexta — o capitão é activado automaticamente."
+                  : "O capitão só pode ser activado de Segunda a Quinta."}
+              </p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="glass rounded-2xl p-5 border border-gold-500/20 space-y-3">
+            <div className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-gold-400" />
+              <p className="font-semibold">Activar capitão hoje</p>
+            </div>
+            <p className="text-sm text-slate-400">
+              Escolhe qual dos teus picks conta a dobrar hoje. Só podes usar uma vez por semana.
+            </p>
+
+            <div className="flex gap-2 flex-wrap">
+              {data.picks.map((p) => (
+                <button
+                  key={p.ticker}
+                  onClick={() => setCaptainTicker(p.ticker)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm font-mono font-semibold border transition-all",
+                    captainTicker === p.ticker
+                      ? "bg-gold-500/20 border-gold-500/50 text-gold-300"
+                      : "bg-navy-800 border-white/10 text-slate-300 hover:border-white/20"
+                  )}
+                >
+                  {p.ticker}
+                </button>
+              ))}
+            </div>
+
+            {captainError && (
+              <p className="text-sm text-danger flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {captainError}
+              </p>
+            )}
+            {captainSuccess && (
+              <p className="text-sm text-success flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0" /> {captainSuccess}
+              </p>
+            )}
+
+            <button
+              onClick={activateCaptain}
+              disabled={!captainTicker || captainLoading}
+              className="w-full py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {captainLoading ? "A activar..." : `Activar ${captainTicker || "—"} como capitão`}
+            </button>
+          </div>
+        );
+      })()}
 
       {/* pontos da semana */}
       <div className="glass rounded-2xl p-6 flex items-center justify-between">
