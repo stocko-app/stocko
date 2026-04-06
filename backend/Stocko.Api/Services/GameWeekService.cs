@@ -81,6 +81,55 @@ public class GameWeekService
         return lastDay.AddDays(-daysBack);
     }
 
+    // Cria sempre a semana a seguir à actual (independente do dia)
+    public GameWeek GetOrCreateNextWeek()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Calcular a próxima Segunda-feira (nunca hoje)
+        int daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+        if (daysUntilMonday == 0) daysUntilMonday = 7;
+        var nextMonday = today.AddDays(daysUntilMonday);
+        var nextFriday = nextMonday.AddDays(4);
+
+        var existing = _db.GameWeeks.FirstOrDefault(w => w.WeekStart == nextMonday);
+        if (existing != null) return existing;
+
+        var lisbonOffset = GetLisbonOffset(nextMonday);
+        var deadline = new DateTime(nextMonday.Year, nextMonday.Month, nextMonday.Day, 8, 0, 0, DateTimeKind.Utc)
+            .AddHours(-lisbonOffset);
+        var resultsAt = new DateTime(nextFriday.Year, nextFriday.Month, nextFriday.Day, 18, 30, 0, DateTimeKind.Utc)
+            .AddHours(-lisbonOffset);
+
+        var gameWeek = new GameWeek
+        {
+            Id = Guid.NewGuid(),
+            WeekStart = nextMonday,
+            WeekEnd = nextFriday,
+            DraftDeadline = deadline,
+            ResultsAt = resultsAt,
+            Status = "draft_open"
+        };
+
+        _db.GameWeeks.Add(gameWeek);
+        _db.SaveChanges();
+
+        Console.WriteLine($"✅ GameWeek seguinte criada: {nextMonday} → {nextFriday} (deadline: {deadline:dd/MM HH:mm} UTC)");
+        return gameWeek;
+    }
+
+    // Devolve a semana que deve receber novos picks:
+    // — se o deadline da semana actual não passou → semana actual
+    // — se já passou → semana seguinte
+    public (GameWeek week, bool isNextWeek) GetDraftTargetWeek()
+    {
+        var current = GetOrCreateCurrentWeek();
+        if (!IsDeadlinePassed(current))
+            return (current, false);
+
+        return (GetOrCreateNextWeek(), true);
+    }
+
     public bool IsDeadlinePassed(GameWeek week)
     {
         return DateTime.UtcNow >= week.DraftDeadline;

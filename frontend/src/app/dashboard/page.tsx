@@ -18,6 +18,14 @@ interface Pick {
   latestPrice: { close: number; pctChange: number } | null;
 }
 
+interface NextWeekDraft {
+  gameWeekId: string;
+  weekStart: string;
+  weekEnd: string;
+  deadline: string;
+  picks: { id: string; ticker: string; name: string; sector: string; isCaptainDraft: boolean }[];
+}
+
 interface WeekData {
   gameWeekId: string;
   weekStart: string;
@@ -26,6 +34,7 @@ interface WeekData {
   status: string;
   deadlinePassed: boolean;
   picks: Pick[];
+  nextWeekDraft: NextWeekDraft | null;
 }
 
 export default function DashboardPage() {
@@ -245,7 +254,7 @@ export default function DashboardPage() {
             {data && !data.deadlinePassed ? (
               <p className="text-sm">Clica em <span className="text-gold-400 font-semibold">Escolher picks</span> para começar.</p>
             ) : (
-              <p className="text-sm">O deadline passou. Aguarda a próxima semana.</p>
+              <p className="text-sm">O deadline passou. Podes já preparar a próxima semana abaixo.</p>
             )}
           </div>
         ) : (
@@ -300,6 +309,60 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* secção próxima semana */}
+      {data?.nextWeekDraft && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+                Próxima semana
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {new Date(data.nextWeekDraft.weekStart).toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}
+                {" – "}
+                {new Date(data.nextWeekDraft.weekEnd).toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}
+                {" · deadline "}
+                {new Date(data.nextWeekDraft.deadline).toLocaleTimeString("pt-PT", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPicker(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-gold-400 hover:text-gold-300 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {data.nextWeekDraft.picks.length === 0 ? "Preparar picks" : "Alterar picks"}
+            </button>
+          </div>
+
+          {data.nextWeekDraft.picks.length === 0 ? (
+            <div className="glass rounded-2xl p-6 text-center text-slate-400 border border-dashed border-white/10">
+              <p className="text-sm">Ainda sem picks para a próxima semana.</p>
+              <p className="text-xs text-slate-500 mt-1">Podes preparar os teus picks já agora.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {data.nextWeekDraft.picks.map((pick) => (
+                <div key={pick.id} className="glass rounded-xl p-3 flex items-center gap-3 border border-white/5">
+                  <div className="w-10 h-10 rounded-lg bg-navy-700 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-gold-400">{pick.ticker}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-semibold truncate">{pick.name}</span>
+                      {pick.isCaptainDraft && <Star className="w-3 h-3 text-gold-400 shrink-0" />}
+                    </div>
+                    <span className="text-xs text-slate-500">{pick.sector}</span>
+                  </div>
+                  <span className="text-xs text-slate-500 bg-navy-800 px-2 py-0.5 rounded-full border border-white/5">
+                    agendado
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

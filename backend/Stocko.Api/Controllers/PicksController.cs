@@ -29,11 +29,7 @@ public class PicksController : ControllerBase
         var user = await _db.Users.FindAsync(userId);
         if (user == null) return Unauthorized("Utilizador não encontrado.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
-
-        // Verificar deadline
-        if (_gameWeekService.IsDeadlinePassed(gameWeek))
-            return BadRequest("O prazo para submeter picks já passou (Segunda 08h00).");
+        var (gameWeek, isNextWeek) = _gameWeekService.GetDraftTargetWeek();
 
         // Verificar limite de picks por plano
         var maxPicks = user.Plan == "plus" || user.Plan == "pro" ? 5 : 3;
@@ -84,11 +80,16 @@ public class PicksController : ControllerBase
         await _db.Picks.AddRangeAsync(picks);
         await _db.SaveChangesAsync();
 
+        var message = isNextWeek
+            ? $"{picks.Count} picks guardados para a próxima semana ({gameWeek.WeekStart:dd/MM})."
+            : $"{picks.Count} picks submetidos com sucesso.";
+
         return Ok(new
         {
-            Message = $"{picks.Count} picks submetidos com sucesso.",
+            Message = message,
             GameWeekId = gameWeek.Id,
             Deadline = gameWeek.DraftDeadline,
+            IsNextWeek = isNextWeek,
             Picks = picks.Select(p => new
             {
                 p.Id,
@@ -98,17 +99,19 @@ public class PicksController : ControllerBase
         });
     }
 
-    // GET /api/picks/week — ver picks da semana actual
+    // GET /api/picks/week — ver picks da semana actual + draft da semana seguinte se aplicável
     [HttpGet("week")]
     public async Task<IActionResult> GetCurrentWeekPicks()
     {
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var (draftWeek, isNextWeek) = _gameWeekService.GetDraftTargetWeek();
 
-        var picks = await _db.Picks
-            .Where(p => p.UserId == userId && p.GameWeekId == gameWeek.Id)
+        // Picks da semana actual (para pontos)
+        var currentPicks = await _db.Picks
+            .Where(p => p.UserId == userId && p.GameWeekId == currentWeek.Id)
             .Include(p => p.Stock)
             .Select(p => new
             {
@@ -127,15 +130,44 @@ public class PicksController : ControllerBase
             })
             .ToListAsync();
 
+        // Picks agendados para a semana seguinte (só se for caso disso)
+        object? nextWeekDraft = null;
+        if (isNextWeek)
+        {
+            var nextPicks = await _db.Picks
+                .Where(p => p.UserId == userId && p.GameWeekId == draftWeek.Id)
+                .Include(p => p.Stock)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Stock.Ticker,
+                    p.Stock.Name,
+                    p.Stock.Sector,
+                    p.IsCaptainDraft,
+                    p.IsAuto
+                })
+                .ToListAsync();
+
+            nextWeekDraft = new
+            {
+                GameWeekId = draftWeek.Id,
+                WeekStart = draftWeek.WeekStart,
+                WeekEnd = draftWeek.WeekEnd,
+                Deadline = draftWeek.DraftDeadline,
+                Picks = nextPicks
+            };
+        }
+
         return Ok(new
         {
-            GameWeekId = gameWeek.Id,
-            WeekStart = gameWeek.WeekStart,
-            WeekEnd = gameWeek.WeekEnd,
-            Deadline = gameWeek.DraftDeadline,
-            Status = gameWeek.Status,
-            DeadlinePassed = _gameWeekService.IsDeadlinePassed(gameWeek),
-            Picks = picks
+            GameWeekId = currentWeek.Id,
+            WeekStart = currentWeek.WeekStart,
+            WeekEnd = currentWeek.WeekEnd,
+            Deadline = currentWeek.DraftDeadline,
+            Status = currentWeek.Status,
+            DeadlinePassed = _gameWeekService.IsDeadlinePassed(currentWeek),
+            Picks = currentPicks,
+            NextWeekDraft = nextWeekDraft
         });
     }
 
