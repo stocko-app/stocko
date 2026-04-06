@@ -52,6 +52,21 @@ builder.Services.AddScoped<CaptainReminderJob>();
 builder.Services.AddScoped<StreakRiskJob>();
 builder.Services.AddScoped<MonthlyLeagueJob>();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("WebPolicy", policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "https://stocko.pt",
+            "https://www.stocko.pt"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+    });
+});
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -68,6 +83,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("WebPolicy");
 app.UseMiddleware<SupabaseAuthMiddleware>();
 app.MapControllers();
 
