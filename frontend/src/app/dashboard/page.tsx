@@ -42,6 +42,12 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showPicker, setShowPicker] = useState(false);
+  const [pickerInitialPicks, setPickerInitialPicks] = useState<{ ticker: string; isCaptainDraft: boolean }[]>([]);
+
+  function openPicker(picks: { ticker: string; isCaptainDraft: boolean }[]) {
+    setPickerInitialPicks(picks);
+    setShowPicker(true);
+  }
   const [captainTicker, setCaptainTicker] = useState("");
   const [captainLoading, setCaptainLoading] = useState(false);
   const [captainError, setCaptainError] = useState("");
@@ -220,10 +226,11 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-sm text-slate-400">
-              Escolhe até 5 acções. Marca ⭐ numa para a definir como capitão (pontos duplicados).
+              Escolhe exactamente 5 acções. Marca ⭐ numa para a definir como capitão (pontos duplicados).
             </p>
             <PickSelector
               maxPicks={5}
+              initialPicks={pickerInitialPicks}
               onSuccess={() => { setShowPicker(false); loadWeek(); }}
               onCancel={() => setShowPicker(false)}
             />
@@ -239,7 +246,7 @@ export default function DashboardPage() {
           </h2>
           {data && !data.deadlinePassed && (
             <button
-              onClick={() => setShowPicker(true)}
+              onClick={() => openPicker(data.picks.map((p) => ({ ticker: p.ticker, isCaptainDraft: p.isCaptainDraft })))}
               className="flex items-center gap-1.5 text-sm font-semibold text-gold-400 hover:text-gold-300 transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -327,7 +334,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <button
-              onClick={() => setShowPicker(true)}
+              onClick={() => openPicker(data.nextWeekDraft!.picks.map((p) => ({ ticker: p.ticker, isCaptainDraft: p.isCaptainDraft })))}
               className="flex items-center gap-1.5 text-sm font-semibold text-gold-400 hover:text-gold-300 transition-colors"
             >
               <Plus className="w-4 h-4" />

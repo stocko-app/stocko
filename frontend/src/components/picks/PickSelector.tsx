@@ -23,16 +23,17 @@ interface SelectedPick {
 
 interface Props {
   maxPicks: number;
+  initialPicks?: SelectedPick[];
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 // ── componente ────────────────────────────────────────────────────────────────
 
-export default function PickSelector({ maxPicks, onSuccess, onCancel }: Props) {
+export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, onCancel }: Props) {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<SelectedPick[]>([]);
+  const [selected, setSelected] = useState<SelectedPick[]>(initialPicks);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
