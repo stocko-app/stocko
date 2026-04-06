@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Stocko.Api.Data;
 using Stocko.Api.Services;
 
 namespace Stocko.Api.Controllers;
@@ -8,10 +9,12 @@ namespace Stocko.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly StockoDbContext _db;
 
-    public AuthController(AuthService authService)
+    public AuthController(AuthService authService, StockoDbContext db)
     {
         _authService = authService;
+        _db = db;
     }
 
     [HttpPost("register")]
@@ -55,6 +58,22 @@ public class AuthController : ControllerBase
         });
     }
 	
+    // POST /api/auth/check-user — verificar se utilizador existe (login identifier-first)
+    [HttpPost("check-user")]
+    public IActionResult CheckUser([FromBody] CheckUserRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.EmailOrUsername))
+            return BadRequest("Campo obrigatório.");
+
+        bool exists;
+        if (request.EmailOrUsername.Contains('@'))
+            exists = _db.Users.Any(u => u.Email.ToLower() == request.EmailOrUsername.ToLower());
+        else
+            exists = _db.Users.Any(u => u.Username.ToLower() == request.EmailOrUsername.ToLower());
+
+        return Ok(new { Exists = exists });
+    }
+
     // GET /api/auth/check-username/{username} — verificar disponibilidade do username
     [HttpGet("check-username/{username}")]
     public IActionResult CheckUsername(string username)
@@ -79,3 +98,4 @@ public class AuthController : ControllerBase
 
 public record RegisterRequest(string Email, string Password, string Username);
 public record LoginRequest(string EmailOrUsername, string Password);
+public record CheckUserRequest(string EmailOrUsername);

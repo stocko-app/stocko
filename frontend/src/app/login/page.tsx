@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { BarChart2, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 
@@ -11,27 +11,43 @@ export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuth();
 
-  const [form, setForm] = useState({ emailOrUsername: "", password: "" });
+  const [step, setStep] = useState<"identifier" | "password">("identifier");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+  async function handleIdentifier(e: React.FormEvent) {
+    e.preventDefault();
+    if (!emailOrUsername.trim()) return;
+    setChecking(true);
+    setError("");
+    try {
+      const res = await api.post<{ exists: boolean }>("/api/auth/check-user", { emailOrUsername });
+      if (!res.exists) {
+        setError("Conta não encontrada. Verifica o email ou username.");
+      } else {
+        setStep("password");
+      }
+    } catch {
+      setError("Erro ao verificar a conta. Tenta novamente.");
+    } finally {
+      setChecking(false);
+    }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     try {
-      const res = await api.post<{ accessToken: string; userId: string }>(
-        "/api/auth/login",
-        form
-      );
-      setAuth(res.accessToken, form.emailOrUsername);
+      const res = await api.post<{ accessToken: string; userId: string }>("/api/auth/login", {
+        emailOrUsername,
+        password,
+      });
+      setAuth(res.accessToken, emailOrUsername);
       router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Credenciais incorrectas.");
@@ -58,73 +74,102 @@ export default function LoginPage() {
 
         {/* card */}
         <div className="glass rounded-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* email ou username */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Email ou username
-              </label>
-              <input
-                type="text"
-                name="emailOrUsername"
-                value={form.emailOrUsername}
-                onChange={handleChange}
-                placeholder="o@teu.email ou o teu username"
-                required
-                autoComplete="username"
-                className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all"
-              />
-            </div>
-
-            {/* password */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
+          {/* passo 1 — identificador */}
+          {step === "identifier" && (
+            <form onSubmit={handleIdentifier} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  Email ou username
+                </label>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="a tua password"
+                  type="text"
+                  value={emailOrUsername}
+                  onChange={(e) => { setEmailOrUsername(e.target.value); setError(""); }}
+                  placeholder="o@teu.email ou o teu username"
                   required
-                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all pr-10"
+                  autoFocus
+                  autoComplete="username"
+                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
 
-            {/* erro */}
-            {error && (
-              <p className="text-danger text-sm bg-danger/10 border border-danger/20 rounded-lg px-4 py-2">
-                {error}
-              </p>
-            )}
-
-            {/* submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  A entrar...
-                </>
-              ) : (
-                "Entrar"
+              {error && (
+                <p className="text-danger text-sm bg-danger/10 border border-danger/20 rounded-lg px-4 py-2">
+                  {error}
+                </p>
               )}
-            </button>
-          </form>
+
+              <button
+                type="submit"
+                disabled={checking || !emailOrUsername.trim()}
+                className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+              >
+                {checking ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> A verificar...</>
+                ) : (
+                  "Continuar"
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* passo 2 — password */}
+          {step === "password" && (
+            <form onSubmit={handleLogin} className="space-y-5">
+              {/* identificador (só leitura) + botão para voltar */}
+              <div
+                className="flex items-center gap-3 px-4 py-3 bg-navy-800 rounded-xl border border-white/10 cursor-pointer group"
+                onClick={() => { setStep("identifier"); setError(""); setPassword(""); }}
+              >
+                <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors shrink-0" />
+                <span className="text-sm text-slate-300 truncate">{emailOrUsername}</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                    placeholder="a tua password"
+                    required
+                    autoFocus
+                    autoComplete="current-password"
+                    className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-danger text-sm bg-danger/10 border border-danger/20 rounded-lg px-4 py-2">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !password}
+                className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> A entrar...</>
+                ) : (
+                  "Entrar"
+                )}
+              </button>
+            </form>
+          )}
 
           <p className="text-center text-sm text-slate-500 mt-6">
             Ainda não tens conta?{" "}
