@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Star, Zap, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import PickSelector from "@/components/picks/PickSelector";
 
 interface Pick {
   id: string;
@@ -31,13 +32,17 @@ export default function DashboardPage() {
   const [data, setData] = useState<WeekData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
 
-  useEffect(() => {
+  function loadWeek() {
+    setLoading(true);
     api.get<WeekData>("/api/picks/week")
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { loadWeek(); }, []);
 
   if (loading) {
     return (
@@ -89,16 +94,53 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* modal de selecção de picks */}
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-lg glass rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">Escolher picks</h2>
+              <button onClick={() => setShowPicker(false)} className="text-slate-400 hover:text-white">
+                <Plus className="w-5 h-5 rotate-45" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-400">
+              Escolhe até 5 acções. Marca ⭐ numa para a definir como capitão (pontos duplicados).
+            </p>
+            <PickSelector
+              maxPicks={5}
+              onSuccess={() => { setShowPicker(false); loadWeek(); }}
+              onCancel={() => setShowPicker(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* lista de picks */}
       <div>
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          Os teus picks
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+            Os teus picks
+          </h2>
+          {data && !data.deadlinePassed && (
+            <button
+              onClick={() => setShowPicker(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-gold-400 hover:text-gold-300 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {data.picks.length === 0 ? "Escolher picks" : "Alterar picks"}
+            </button>
+          )}
+        </div>
 
         {!data?.picks.length ? (
           <div className="glass rounded-2xl p-8 text-center text-slate-400">
             <p className="text-lg font-semibold mb-1">Ainda sem picks</p>
-            <p className="text-sm">O deadline ainda não passou — escolhe as tuas acções.</p>
+            {data && !data.deadlinePassed ? (
+              <p className="text-sm">Clica em <span className="text-gold-400 font-semibold">Escolher picks</span> para começar.</p>
+            ) : (
+              <p className="text-sm">O deadline passou. Aguarda a próxima semana.</p>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
