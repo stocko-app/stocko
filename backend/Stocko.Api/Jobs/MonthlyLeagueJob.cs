@@ -38,22 +38,12 @@ public class MonthlyLeagueJob
 
         Console.WriteLine($"📊 Total utilizadores: {totalUsers} | Tiers activos: {string.Join(", ", activeTiers)}");
 
-        // Semanas do mês anterior
+        // Dias do mês anterior — contagem exacta dia a dia
         var now = DateTime.UtcNow;
-        var firstDayLastMonth = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
-        var lastDayLastMonth = new DateTime(now.Year, now.Month, 1).AddDays(-1);
+        var firstDayLastMonth = DateOnly.FromDateTime(new DateTime(now.Year, now.Month, 1).AddMonths(-1));
+        var lastDayLastMonth = DateOnly.FromDateTime(new DateTime(now.Year, now.Month, 1).AddDays(-1));
 
-        var lastMonthWeekIds = _db.GameWeeks
-            .Where(gw => gw.WeekStart >= DateOnly.FromDateTime(firstDayLastMonth)
-                      && gw.WeekEnd   <= DateOnly.FromDateTime(lastDayLastMonth))
-            .Select(gw => gw.Id)
-            .ToList();
-
-        if (!lastMonthWeekIds.Any())
-        {
-            Console.WriteLine("⏭️ MonthlyLeagueJob: sem semanas completas no mês anterior");
-            return;
-        }
+        Console.WriteLine($"📅 Período: {firstDayLastMonth} → {lastDayLastMonth}");
 
         int promoted = 0;
         int relegated = 0;
@@ -66,14 +56,21 @@ public class MonthlyLeagueJob
 
             if (usersInTier.Count < 2) continue;
 
-            // Pontos acumulados no mês anterior
+            // Pontos acumulados dia a dia no mês anterior (ignora fronteiras de semana)
+            var userIds = usersInTier.Select(u => u.Id).ToList();
+            var dailyTotals = _db.DailyScores
+                .Where(ds => userIds.Contains(ds.UserId) &&
+                             ds.Date >= firstDayLastMonth &&
+                             ds.Date <= lastDayLastMonth)
+                .GroupBy(ds => ds.UserId)
+                .Select(g => new { UserId = g.Key, Points = g.Sum(ds => ds.Total) })
+                .ToList();
+
             var monthlyPoints = usersInTier
                 .Select(u => new
                 {
                     User = u,
-                    Points = _db.WeeklyScores
-                        .Where(ws => ws.UserId == u.Id && lastMonthWeekIds.Contains(ws.GameWeekId))
-                        .Sum(ws => ws.TotalPoints)
+                    Points = dailyTotals.FirstOrDefault(d => d.UserId == u.Id)?.Points ?? 0m
                 })
                 .OrderByDescending(x => x.Points)
                 .ToList();
