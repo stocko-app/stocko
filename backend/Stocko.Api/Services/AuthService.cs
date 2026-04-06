@@ -25,9 +25,9 @@ public class AuthService
         {
             response = await _supabase.Auth.SignUp(email, password);
         }
-        catch (Exception ex)
+        catch
         {
-            return new AuthResult { Success = false, Error = $"Erro Supabase: {ex.Message}" };
+            return new AuthResult { Success = false, Error = "Erro ao criar conta. Tenta novamente." };
         }
 
         if (response?.User == null)
