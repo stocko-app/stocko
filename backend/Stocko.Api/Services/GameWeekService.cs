@@ -15,16 +15,18 @@ public class GameWeekService
     public GameWeek GetOrCreateCurrentWeek()
 	{
 		var today = DateOnly.FromDateTime(DateTime.UtcNow);
-		var dayOfWeek = (int)today.DayOfWeek; // 0=Dom, 1=Seg, ..., 6=Sab
 
 		DateOnly monday;
 
-		// Sexta após 18h30, Sábado ou Domingo → abre a semana SEGUINTE
-		if (today.DayOfWeek == DayOfWeek.Saturday || today.DayOfWeek == DayOfWeek.Sunday)
+		// Sábado → próxima semana (domingo é draft day, semana começa segunda)
+		if (today.DayOfWeek == DayOfWeek.Saturday)
 		{
-			// Próxima Segunda
-			var daysUntilMonday = today.DayOfWeek == DayOfWeek.Saturday ? 2 : 1;
-			monday = today.AddDays(daysUntilMonday);
+			monday = today.AddDays(2);
+		}
+		// Domingo → próxima semana (draft ainda aberto até meia-noite)
+		else if (today.DayOfWeek == DayOfWeek.Sunday)
+		{
+			monday = today.AddDays(1);
 		}
 		else
 		{
@@ -35,16 +37,20 @@ public class GameWeekService
 
 		var friday = monday.AddDays(4);
 
-		// Verificar se já existe
 		var existing = _db.GameWeeks.FirstOrDefault(w => w.WeekStart == monday);
 		if (existing != null) return existing;
 
-		// Criar nova GameWeek
-		var lisbonOffset = GetLisbonOffset(monday);
-		var deadline = new DateTime(monday.Year, monday.Month, monday.Day, 8, 0, 0, DateTimeKind.Utc)
+		// Deadline: Domingo 23h59 Lisboa (= Segunda 00h00 menos 1 min)
+		// = Domingo 23h59 Lisboa → em UTC: 23h59 - lisbonOffset
+		var sunday = monday.AddDays(-1);
+		var lisbonOffset = GetLisbonOffset(sunday);
+		var deadline = new DateTime(sunday.Year, sunday.Month, sunday.Day, 23, 59, 0, DateTimeKind.Utc)
 			.AddHours(-lisbonOffset);
-		var resultsAt = new DateTime(friday.Year, friday.Month, friday.Day, 18, 30, 0, DateTimeKind.Utc)
-			.AddHours(-lisbonOffset);
+
+		// Resultados finais: Sexta 22h00 Lisboa (após fecho US)
+		var lisbonOffsetFriday = GetLisbonOffset(friday);
+		var resultsAt = new DateTime(friday.Year, friday.Month, friday.Day, 22, 0, 0, DateTimeKind.Utc)
+			.AddHours(-lisbonOffsetFriday);
 
 		var gameWeek = new GameWeek
 		{
@@ -95,11 +101,13 @@ public class GameWeekService
         var existing = _db.GameWeeks.FirstOrDefault(w => w.WeekStart == nextMonday);
         if (existing != null) return existing;
 
-        var lisbonOffset = GetLisbonOffset(nextMonday);
-        var deadline = new DateTime(nextMonday.Year, nextMonday.Month, nextMonday.Day, 8, 0, 0, DateTimeKind.Utc)
+        var nextSunday = nextMonday.AddDays(-1);
+        var lisbonOffset = GetLisbonOffset(nextSunday);
+        var deadline = new DateTime(nextSunday.Year, nextSunday.Month, nextSunday.Day, 23, 59, 0, DateTimeKind.Utc)
             .AddHours(-lisbonOffset);
-        var resultsAt = new DateTime(nextFriday.Year, nextFriday.Month, nextFriday.Day, 18, 30, 0, DateTimeKind.Utc)
-            .AddHours(-lisbonOffset);
+        var lisbonOffsetFriday = GetLisbonOffset(nextFriday);
+        var resultsAt = new DateTime(nextFriday.Year, nextFriday.Month, nextFriday.Day, 22, 0, 0, DateTimeKind.Utc)
+            .AddHours(-lisbonOffsetFriday);
 
         var gameWeek = new GameWeek
         {

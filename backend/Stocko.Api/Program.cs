@@ -44,7 +44,7 @@ builder.Services.AddMemoryCache();
 
 // Jobs
 builder.Services.AddScoped<MarketDataJob>();
-builder.Services.AddScoped<DailyScoringJob>();
+builder.Services.AddScoped<MarketScoringJob>();
 builder.Services.AddScoped<AutoPickJob>();
 builder.Services.AddScoped<AutoCaptainJob>();
 builder.Services.AddScoped<DeadlineReminderJob>();
@@ -104,52 +104,81 @@ using (var scope = app.Services.CreateScope())
     var jobs = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
     var lisbonTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
 
+    // Market data: cobre JP (1h-7h30) + EU/PT (9h-17h30) + US (14h30-22h) + Crypto (24h)
     jobs.AddOrUpdate<MarketDataJob>(
-        "market-data-hourly",
+        "market-data",
         job => job.ExecuteAsync(),
-        "0 8-18 * * 1-5",
+        "0 1-22 * * 1-5",   // cada hora das 01h às 22h Seg-Sex
         new RecurringJobOptions { TimeZone = lisbonTz });
 
-    jobs.AddOrUpdate<DailyScoringJob>(
-        "daily-scoring",
-        job => job.ExecuteAsync(),
-        "15 18 * * 2-6",
+    // Scoring JP: após fecho Nikkei (~07h45 Lisboa)
+    jobs.AddOrUpdate<MarketScoringJob>(
+        "scoring-jp",
+        job => job.ExecuteJPAsync(),
+        "45 7 * * 1-5",
         new RecurringJobOptions { TimeZone = lisbonTz });
 
+    // Scoring EU/PT: após fecho europeu (~17h45 Lisboa)
+    jobs.AddOrUpdate<MarketScoringJob>(
+        "scoring-eu",
+        job => job.ExecuteEUAsync(),
+        "45 17 * * 1-5",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    // Scoring US/EMERGING: após fecho Wall Street (~21h30 Lisboa) + resultados na Sexta
+    jobs.AddOrUpdate<MarketScoringJob>(
+        "scoring-us",
+        job => job.ExecuteUSAsync(),
+        "30 21 * * 1-5",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    // Scoring Crypto/Commodity: meia-noite Lisboa (00h30)
+    jobs.AddOrUpdate<MarketScoringJob>(
+        "scoring-crypto",
+        job => job.ExecuteCryptoAsync(),
+        "30 0 * * 2-6",     // Ter-Sab (scoring do dia anterior Seg-Sex)
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    // Auto-pick: Segunda 00h05 (logo após deadline Domingo 23h59)
     jobs.AddOrUpdate<AutoPickJob>(
         "auto-pick",
         job => job.ExecuteAsync(),
-        "5 8 * * 1",
+        "5 0 * * 1",
         new RecurringJobOptions { TimeZone = lisbonTz });
 
-    jobs.AddOrUpdate<MonthlyLeagueJob>(
-        "monthly-league",
+    // Auto-captain: Sexta 00h05 (último dia para activar)
+    jobs.AddOrUpdate<AutoCaptainJob>(
+        "auto-captain",
         job => job.ExecuteAsync(),
-        "0 1 1 * *",
+        "5 0 * * 5",
         new RecurringJobOptions { TimeZone = lisbonTz });
 
+    // Deadline reminder: Domingo 18h (lembrar quem não fez picks)
+    jobs.AddOrUpdate<DeadlineReminderJob>(
+        "deadline-reminder",
+        job => job.ExecuteAsync(),
+        "0 18 * * 0",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    // Captain reminder: Seg-Qui 09h00 (lembrar quem não activou capitão)
+    jobs.AddOrUpdate<CaptainReminderJob>(
+        "captain-reminder",
+        job => job.ExecuteAsync(),
+        "0 9 * * 1-4",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    // Streak risk: Domingo 20h (quem tem streak e não fez picks)
     jobs.AddOrUpdate<StreakRiskJob>(
         "streak-risk",
         job => job.ExecuteAsync(),
         "0 20 * * 0",
         new RecurringJobOptions { TimeZone = lisbonTz });
 
-    jobs.AddOrUpdate<DeadlineReminderJob>(
-        "deadline-reminder",
+    // Ligas mensais: 1º de cada mês às 01h
+    jobs.AddOrUpdate<MonthlyLeagueJob>(
+        "monthly-league",
         job => job.ExecuteAsync(),
-        "0 6 * * 1",
-        new RecurringJobOptions { TimeZone = lisbonTz });
-
-    jobs.AddOrUpdate<CaptainReminderJob>(
-        "captain-reminder",
-        job => job.ExecuteAsync(),
-        "15 8 * * 1-4",
-        new RecurringJobOptions { TimeZone = lisbonTz });
-
-    jobs.AddOrUpdate<AutoCaptainJob>(
-        "auto-captain",
-        job => job.ExecuteAsync(),
-        "5 0 * * 5",
+        "0 1 1 * *",
         new RecurringJobOptions { TimeZone = lisbonTz });
 }
 

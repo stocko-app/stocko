@@ -26,7 +26,7 @@ public class ScoringService
         return pctChange > 0 ? 1 : 0;
     }
 
-    public async Task CalculateDailyScoresAsync(DateOnly date)
+    public async Task CalculateDailyScoresAsync(DateOnly date, string[]? markets = null)
     {
         // Buscar GameWeek activa
         var gameWeek = _db.GameWeeks
@@ -38,10 +38,19 @@ public class ScoringService
             return;
         }
 
-        // Buscar todos os picks da semana
-        var picks = _db.Picks
-            .Where(p => p.GameWeekId == gameWeek.Id)
-            .ToList();
+        // Filtrar picks pelo mercado (se especificado)
+        var picksQuery = _db.Picks.Where(p => p.GameWeekId == gameWeek.Id);
+
+        if (markets != null && markets.Length > 0)
+        {
+            var stockIdsForMarkets = _db.Stocks
+                .Where(s => markets.Contains(s.Market))
+                .Select(s => s.Id)
+                .ToList();
+            picksQuery = picksQuery.Where(p => stockIdsForMarkets.Contains(p.StockId));
+        }
+
+        var picks = picksQuery.ToList();
 
         if (!picks.Any())
         {
