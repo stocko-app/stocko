@@ -38,11 +38,11 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) ||
+        if (string.IsNullOrWhiteSpace(request.EmailOrUsername) ||
             string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest("Email e password são obrigatórios.");
+            return BadRequest("Email/username e password são obrigatórios.");
 
-        var result = await _authService.LoginAsync(request.Email, request.Password);
+        var result = await _authService.LoginAsync(request.EmailOrUsername, request.Password);
 
         if (!result.Success)
             return Unauthorized(result.Error);
@@ -78,4 +78,4 @@ public class AuthController : ControllerBase
 }
 
 public record RegisterRequest(string Email, string Password, string Username);
-public record LoginRequest(string Email, string Password);
+public record LoginRequest(string EmailOrUsername, string Password);

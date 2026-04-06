@@ -11,7 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuth();
 
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ emailOrUsername: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,10 +31,10 @@ export default function LoginPage() {
         "/api/auth/login",
         form
       );
-      setAuth(res.accessToken, form.email);
+      setAuth(res.accessToken, form.emailOrUsername);
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Email ou password incorrectos.");
+      setError(err instanceof Error ? err.message : "Credenciais incorrectas.");
     } finally {
       setLoading(false);
     }
@@ -60,18 +60,19 @@ export default function LoginPage() {
         <div className="glass rounded-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* email */}
+            {/* email ou username */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Email
+                Email ou username
               </label>
               <input
-                type="email"
-                name="email"
-                value={form.email}
+                type="text"
+                name="emailOrUsername"
+                value={form.emailOrUsername}
                 onChange={handleChange}
-                placeholder="o@teu.email"
+                placeholder="o@teu.email ou o teu username"
                 required
+                autoComplete="username"
                 className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all"
               />
             </div>

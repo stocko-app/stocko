@@ -55,8 +55,19 @@ public class AuthService
         };
     }
 
-    public async Task<AuthResult> LoginAsync(string email, string password)
+    public async Task<AuthResult> LoginAsync(string emailOrUsername, string password)
     {
+        // Se não contém '@', é um username — procurar o email na BD
+        var email = emailOrUsername.Contains('@')
+            ? emailOrUsername
+            : _db.Users
+                .Where(u => u.Username.ToLower() == emailOrUsername.ToLower())
+                .Select(u => u.Email)
+                .FirstOrDefault();
+
+        if (email == null)
+            return new AuthResult { Success = false, Error = "Utilizador não encontrado." };
+
         try
         {
             var response = await _supabase.Auth.SignIn(email, password);
@@ -74,7 +85,7 @@ public class AuthService
         }
         catch
         {
-            return new AuthResult { Success = false, Error = "Email ou password incorrectos." };
+            return new AuthResult { Success = false, Error = "Credenciais incorrectas." };
         }
     }
 
