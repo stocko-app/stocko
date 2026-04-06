@@ -38,16 +38,6 @@ public class RankingsController : ControllerBase
 
         var totalPlayers = allScores.Count;
 
-        // Calcular ranks e percentis
-        for (int i = 0; i < allScores.Count; i++)
-        {
-            allScores[i].RankGlobal = i + 1;
-            allScores[i].Percentile = totalPlayers > 0
-                ? Math.Round((decimal)(totalPlayers - i) / totalPlayers * 100, 1)
-                : 0;
-        }
-        await _db.SaveChangesAsync();
-
         // Paginar
         var paged = allScores
             .Skip((page - 1) * pageSize)
@@ -100,74 +90,14 @@ public class RankingsController : ControllerBase
 
         var totalInTier = tierScores.Count;
 
-        // Calcular ranks dentro do tier
-        for (int i = 0; i < tierScores.Count; i++)
-        {
-            tierScores[i].RankTier = i + 1;
-        }
-        await _db.SaveChangesAsync();
-
         var rankings = tierScores.Select((ws, i) => new
         {
-            Rank = i + 1,
+            Rank = ws.RankTier > 0 ? ws.RankTier : i + 1,
             ws.User.Username,
             TotalPoints = Math.Round(ws.TotalPoints, 2),
             IsMe = ws.UserId == userId,
-            IsPromotionZone = totalInTier > 0 && (i + 1) <= Math.Ceiling(totalInTier * 0.2),
-            IsRelegationZone = totalInTier > 0 && (i + 1) > Math.Floor(totalInTier * 0.8)
-        }).ToList();
-
-        var myScore = tierScores.FirstOrDefault(ws => ws.UserId == userId);
-
-        return Ok(new
-        {
-            Tier = user.LeagueTier,
-            TotalInTier = totalInTier,
-            MyRank = myScore?.RankTier ?? 0,
-            MyPoints = myScore != null ? Math.Round(myScore.TotalPoints, 2) : 0,
-            PromotionCutoff = (int)Math.Ceiling(totalInTier * 0.2),
-            RelegationCutoff = (int)Math.Floor(totalInTier * 0.8),
-            Rankings = rankings
-        });
-    }
-
-    // GET /api/rankings/tier/{tier} — ranking de um tier específico (só o próprio tier)
-    [HttpGet("tier/{tier}")]
-    public async Task<IActionResult> GetTierRankingByName(string tier)
-    {
-        var userId = HttpContext.Items["UserId"] as Guid?;
-        if (userId == null) return Unauthorized("Token inválido.");
-
-        var user = await _db.Users.FindAsync(userId);
-        if (user == null) return Unauthorized();
-
-        // Só pode ver o seu próprio tier
-        if (!string.Equals(user.LeagueTier, tier, StringComparison.OrdinalIgnoreCase))
-            return Forbid();
-
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
-
-        var tierScores = await _db.WeeklyScores
-            .Where(ws => ws.GameWeekId == gameWeek.Id && ws.User.LeagueTier == user.LeagueTier)
-            .Include(ws => ws.User)
-            .OrderByDescending(ws => ws.TotalPoints)
-            .ToListAsync();
-
-        var totalInTier = tierScores.Count;
-
-        for (int i = 0; i < tierScores.Count; i++)
-            tierScores[i].RankTier = i + 1;
-
-        await _db.SaveChangesAsync();
-
-        var rankings = tierScores.Select((ws, i) => new
-        {
-            Rank = i + 1,
-            ws.User.Username,
-            TotalPoints = Math.Round(ws.TotalPoints, 2),
-            IsMe = ws.UserId == userId,
-            IsPromotionZone = totalInTier > 0 && (i + 1) <= Math.Ceiling(totalInTier * 0.2),
-            IsRelegationZone = totalInTier > 0 && (i + 1) > Math.Floor(totalInTier * 0.8)
+            IsPromotionZone = totalInTier > 0 && (ws.RankTier > 0 ? ws.RankTier : i + 1) <= Math.Ceiling(totalInTier * 0.2),
+            IsRelegationZone = totalInTier > 0 && (ws.RankTier > 0 ? ws.RankTier : i + 1) > Math.Floor(totalInTier * 0.8)
         }).ToList();
 
         var myScore = tierScores.FirstOrDefault(ws => ws.UserId == userId);

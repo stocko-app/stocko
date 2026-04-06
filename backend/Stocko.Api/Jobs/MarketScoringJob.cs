@@ -63,6 +63,12 @@ public class MarketScoringJob
 
         Console.WriteLine($"🕐 MarketScoringJob [{label}] iniciado: {today}");
         await _scoringService.CalculateDailyScoresAsync(today, markets);
+
+        // Actualizar ranks após cada scoring para manter rankings actualizados
+        var gameWeekService = new GameWeekService(_db);
+        var currentWeek = gameWeekService.GetOrCreateCurrentWeek();
+        await _scoringService.UpdateRanksAsync(currentWeek.Id);
+
         Console.WriteLine($"✅ MarketScoringJob [{label}] concluído: {today}");
     }
 

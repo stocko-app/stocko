@@ -217,6 +217,39 @@ public class ScoringService
         Console.WriteLine($"✅ Pontuação calculada para {processed} utilizadores em {date}");
     }
 
+    // Recalcular ranks e percentis de todos os utilizadores para uma semana
+    public async Task UpdateRanksAsync(Guid gameWeekId)
+    {
+        var scores = _db.WeeklyScores
+            .Where(ws => ws.GameWeekId == gameWeekId)
+            .OrderByDescending(ws => ws.TotalPoints)
+            .ToList();
+
+        var totalPlayers = scores.Count;
+        if (totalPlayers == 0) return;
+
+        // Ranks globais
+        for (int i = 0; i < scores.Count; i++)
+        {
+            scores[i].RankGlobal = i + 1;
+            scores[i].Percentile = Math.Round((decimal)(totalPlayers - i) / totalPlayers * 100, 1);
+        }
+
+        // Ranks por tier
+        var byTier = scores.GroupBy(ws =>
+            _db.Users.Where(u => u.Id == ws.UserId).Select(u => u.LeagueTier).FirstOrDefault());
+
+        foreach (var tierGroup in byTier)
+        {
+            var tierList = tierGroup.OrderByDescending(ws => ws.TotalPoints).ToList();
+            for (int i = 0; i < tierList.Count; i++)
+                tierList[i].RankTier = i + 1;
+        }
+
+        await _db.SaveChangesAsync();
+        Console.WriteLine($"✅ Ranks actualizados para {totalPlayers} utilizadores");
+    }
+
     // Actualizar streaks no fim de semana (chamar apenas na Sexta)
     public async Task UpdateStreaksAsync(Guid gameWeekId)
     {
