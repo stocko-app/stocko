@@ -8,9 +8,13 @@ using Stocko.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
+// Database — pool limitado para não esgotar conexões do Supabase free tier (max ~60)
+var connString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+var connStringWithPool = connString
+    + ";Maximum Pool Size=8;Minimum Pool Size=1;Connection Idle Lifetime=30";
+
 builder.Services.AddDbContext<StockoDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connStringWithPool));
 
 // Supabase Client
 builder.Services.AddScoped<Supabase.Client>(_ =>
@@ -23,11 +27,16 @@ builder.Services.AddScoped<Supabase.Client>(_ =>
     return client;
 });
 
-// Hangfire
+// Hangfire — pool próprio pequeno + workers limitados
+var hangfireConnString = connString
+    + ";Maximum Pool Size=5;Minimum Pool Size=1;Connection Idle Lifetime=30";
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(c =>
-        c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
-builder.Services.AddHangfireServer();
+        c.UseNpgsqlConnection(hangfireConnString)));
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = 3; // reduzir workers para poupar conexões
+});
 
 // Services
 builder.Services.AddScoped<AuthService>();
