@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Microsoft.Extensions.Configuration;
 using Stocko.Api.Data;
 using Supabase.Gotrue;
 
@@ -7,11 +10,17 @@ public class AuthService
 {
     private readonly Supabase.Client _supabase;
     private readonly StockoDbContext _db;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly string _supabaseUrl;
+    private readonly string _supabaseAnonKey;
 
-    public AuthService(Supabase.Client supabase, StockoDbContext db)
+    public AuthService(Supabase.Client supabase, StockoDbContext db, IHttpClientFactory httpClientFactory, IConfiguration config)
     {
         _supabase = supabase;
         _db = db;
+        _httpClientFactory = httpClientFactory;
+        _supabaseUrl = config["Supabase:Url"]!;
+        _supabaseAnonKey = config["Supabase:AnonKey"]!;
     }
 
     public async Task<AuthResult> RegisterAsync(string email, string password, string username)
@@ -92,6 +101,48 @@ public class AuthService
     public bool UsernameExists(string username)
     {
         return _db.Users.Any(u => u.Username.ToLower() == username.ToLower());
+    }
+
+    public async Task<bool> SendPasswordResetAsync(string email)
+    {
+        try
+        {
+            var http = _httpClientFactory.CreateClient();
+            http.DefaultRequestHeaders.Add("apikey", _supabaseAnonKey);
+
+            var redirectTo = Uri.EscapeDataString("https://stocko.pt/reset-password");
+            var response = await http.PostAsJsonAsync(
+                $"{_supabaseUrl}/auth/v1/recover?redirect_to={redirectTo}",
+                new { email, gotrue_meta_security = new { } });
+
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<AuthResult> ResetPasswordAsync(string accessToken, string newPassword)
+    {
+        try
+        {
+            var http = _httpClientFactory.CreateClient();
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            http.DefaultRequestHeaders.Add("apikey", _supabaseAnonKey);
+
+            var response = await http.PutAsJsonAsync(
+                $"{_supabaseUrl}/auth/v1/user",
+                new { password = newPassword });
+
+            return response.IsSuccessStatusCode
+                ? new AuthResult { Success = true }
+                : new AuthResult { Success = false, Error = "Token inválido ou expirado." };
+        }
+        catch
+        {
+            return new AuthResult { Success = false, Error = "Erro ao redefinir a password." };
+        }
     }
 }
 

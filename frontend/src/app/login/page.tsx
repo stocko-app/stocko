@@ -168,6 +168,15 @@ export default function LoginPage() {
                   "Entrar"
                 )}
               </button>
+
+              <div className="text-center">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Esqueceu-se da password?
+                </Link>
+              </div>
             </form>
           )}
 

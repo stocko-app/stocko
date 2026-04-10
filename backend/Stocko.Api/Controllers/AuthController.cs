@@ -87,15 +87,48 @@ public class AuthController : ControllerBase
 
     [HttpGet("me")]
     public IActionResult Me()
-	{
-		var userId = HttpContext.Items["UserId"];
-		if (userId == null)
-			return Unauthorized("Token inválido ou ausente.");
+    {
+        var userId = HttpContext.Items["UserId"];
+        if (userId == null)
+            return Unauthorized("Token inválido ou ausente.");
 
-		return Ok(new { userId });
-	}
+        return Ok(new { userId });
+    }
+
+    // POST /api/auth/forgot-password — enviar email de recuperação
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest("Email obrigatório.");
+
+        // Chamar mesmo que o email não exista (não revelar se conta existe)
+        await _authService.SendPasswordResetAsync(request.Email);
+
+        return Ok(new { Message = "Se este email estiver registado, receberás um link de recuperação." });
+    }
+
+    // POST /api/auth/reset-password — definir nova password com token de recuperação
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.NewPassword))
+            return BadRequest("Token e nova password são obrigatórios.");
+
+        if (request.NewPassword.Length < 6)
+            return BadRequest("A password deve ter pelo menos 6 caracteres.");
+
+        var result = await _authService.ResetPasswordAsync(request.AccessToken, request.NewPassword);
+
+        if (!result.Success)
+            return BadRequest(result.Error);
+
+        return Ok(new { Message = "Password alterada com sucesso." });
+    }
 }
 
 public record RegisterRequest(string Email, string Password, string Username);
 public record LoginRequest(string EmailOrUsername, string Password);
 public record CheckUserRequest(string EmailOrUsername);
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string AccessToken, string NewPassword);
