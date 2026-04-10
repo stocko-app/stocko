@@ -16,8 +16,8 @@ var connStringWithPool = connString
 builder.Services.AddDbContext<StockoDbContext>(options =>
     options.UseNpgsql(connStringWithPool));
 
-// Supabase Client
-builder.Services.AddScoped<Supabase.Client>(_ =>
+// Supabase Client — Singleton para evitar InitializeAsync().Wait() em cada request
+builder.Services.AddSingleton<Supabase.Client>(sp =>
 {
     var url = builder.Configuration["Supabase:Url"]!;
     var key = builder.Configuration["Supabase:ServiceRoleKey"]!;
