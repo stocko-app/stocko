@@ -42,7 +42,11 @@ builder.Services.AddHangfireServer(options =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<GameWeekService>();
 builder.Services.AddScoped<ScoringService>();
-builder.Services.AddHttpClient<MarketDataService>();
+builder.Services.AddHttpClient<MarketDataService>(client =>
+{
+    // Timeout por chamada HTTP — evita que APIs lentas bloqueiem threads indefinidamente
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddScoped<AchievementService>();
 builder.Services.AddHttpClient<NotificationService>();

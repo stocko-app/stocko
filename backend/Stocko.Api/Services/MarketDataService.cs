@@ -184,7 +184,7 @@ public class MarketDataService
         Console.WriteLine($"✅ {ticker} ({result.Source}): {result.Close} ({result.PctChange:+0.00;-0.00}%)");
     }
 
-    public async Task FetchActiveStocksAsync()
+    public async Task FetchActiveStocksAsync(CancellationToken ct = default)
     {
         var tickers = _db.Stocks
             .Where(s => s.Active)
@@ -193,8 +193,9 @@ public class MarketDataService
 
         foreach (var ticker in tickers)
         {
+            ct.ThrowIfCancellationRequested();
             await FetchAndCachePriceAsync(ticker);
-            await Task.Delay(8000); // respeitar limite TwelveData: 8 calls/min
+            await Task.Delay(8000, ct); // respeitar limite TwelveData: 8 calls/min
         }
     }
 }
