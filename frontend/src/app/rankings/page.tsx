@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Trophy, Crown, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { useAuth } from "@/store/auth";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ function RankBadge({ rank }: { rank: number }) {
 // ── componente principal ──────────────────────────────────────────────────────
 
 export default function RankingsPage() {
+  const { token } = useAuth();
   const [tab, setTab] = useState<"global" | "tier">("global");
   const [global, setGlobal] = useState<GlobalData | null>(null);
   const [tier, setTier] = useState<TierData | null>(null);
@@ -64,6 +66,8 @@ export default function RankingsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setGlobal(null);
+    setTier(null);
     setLoading(true);
     setError("");
 
@@ -76,7 +80,7 @@ export default function RankingsPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [tab]);
+  }, [tab, token]); // re-fetch quando muda de tab ou de utilizador
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

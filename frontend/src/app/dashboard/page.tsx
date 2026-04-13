@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { useAuth } from "@/store/auth";
 import PickSelector from "@/components/picks/PickSelector";
 
 interface Pick {
@@ -38,6 +39,7 @@ interface WeekData {
 }
 
 export default function DashboardPage() {
+  const { token } = useAuth();
   const [data, setData] = useState<WeekData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,7 +63,11 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { loadWeek(); }, []);
+  useEffect(() => {
+    setData(null);
+    setError("");
+    loadWeek();
+  }, [token]); // re-fetch sempre que o utilizador muda
 
   async function activateCaptain() {
     if (!captainTicker) return;

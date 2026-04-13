@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { User, Flame, Trophy, Star, Calendar, TrendingUp, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { useAuth } from "@/store/auth";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -69,12 +70,17 @@ function StatCard({ icon: Icon, label, value, sub }: {
 // ── componente principal ──────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { token } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setProfile(null);
+    setAchievements([]);
+    setError("");
+    setLoading(true);
     Promise.all([
       api.get<Profile>("/api/users/me"),
       api.get<Achievement[]>("/api/users/me/achievements"),
@@ -85,7 +91,7 @@ export default function ProfilePage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]); // re-fetch quando o utilizador muda
 
   if (loading) {
     return (
