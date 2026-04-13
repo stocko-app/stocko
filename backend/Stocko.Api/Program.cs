@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Database — pool limitado para não esgotar conexões do Supabase free tier (max ~60)
 var connString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 var connStringWithPool = connString
-    + ";Maximum Pool Size=8;Minimum Pool Size=1;Connection Idle Lifetime=30";
+    + ";Maximum Pool Size=8;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15";
 
 builder.Services.AddDbContext<StockoDbContext>(options =>
     options.UseNpgsql(connStringWithPool));
@@ -29,7 +29,7 @@ builder.Services.AddSingleton<Supabase.Client>(sp =>
 
 // Hangfire — pool próprio pequeno + workers limitados
 var hangfireConnString = connString
-    + ";Maximum Pool Size=5;Minimum Pool Size=1;Connection Idle Lifetime=30";
+    + ";Maximum Pool Size=5;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15";
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(c =>
         c.UseNpgsqlConnection(hangfireConnString)));
