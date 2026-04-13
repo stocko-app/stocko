@@ -49,9 +49,15 @@ builder.Services.AddHttpClient<MarketDataService>(client =>
 });
 builder.Services.AddScoped<MarketDataService>();
 builder.Services.AddScoped<AchievementService>();
-builder.Services.AddHttpClient<NotificationService>();
+builder.Services.AddHttpClient<NotificationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
 builder.Services.AddScoped<NotificationService>();
-builder.Services.AddHttpClient<NewsService>();
+builder.Services.AddHttpClient<NewsService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.AddScoped<NewsService>();
 builder.Services.AddMemoryCache();
 
