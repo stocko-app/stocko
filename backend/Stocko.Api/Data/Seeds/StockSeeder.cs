@@ -1,5 +1,6 @@
 using CsvHelper;
 using CsvHelper.Configuration;
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using Stocko.Api.Models;
 
@@ -9,7 +10,7 @@ public static class StockSeeder
 {
     public static async Task SeedAsync(StockoDbContext context)
     {
-        if (context.Stocks.Any())
+        if (await context.Stocks.AnyAsync())
             return; // já tem dados — não repetir
 
         var csvPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seeds", "stocks.csv");
