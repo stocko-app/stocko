@@ -89,7 +89,10 @@ public class AuthService
             var response = await _supabase.Auth.SignIn(email, password);
 
             if (response?.User == null)
+            {
+                Console.WriteLine($"❌ Auth.SignIn retornou null para {email}");
                 return new AuthResult { Success = false, Error = "Credenciais inválidas." };
+            }
 
             return new AuthResult
             {
@@ -99,8 +102,9 @@ public class AuthService
                 UserId = Guid.Parse(response.User.Id!)
             };
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"❌ LoginAsync exception: {ex.GetType().Name}: {ex.Message}");
             return new AuthResult { Success = false, Error = "Credenciais incorrectas." };
         }
     }
