@@ -16,8 +16,7 @@ var pooledConnBuilder = new NpgsqlConnectionStringBuilder(connString)
     MaxPoolSize = 8,
     MinPoolSize = 1,
     ConnectionIdleLifetime = 30,
-    Timeout = 15,
-    PrepareThreshold = 0
+    Timeout = 15
 };
 var connStringWithPool = pooledConnBuilder.ConnectionString;
 
@@ -41,8 +40,7 @@ var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(connString)
     MaxPoolSize = 5,
     MinPoolSize = 1,
     ConnectionIdleLifetime = 30,
-    Timeout = 15,
-    PrepareThreshold = 0
+    Timeout = 15
 };
 var hangfireConnString = hangfireConnBuilder.ConnectionString;
 builder.Services.AddHangfire(config =>
