@@ -9,20 +9,22 @@ using Stocko.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database — PgBouncer transaction pooler; PrepareThreshold=0 desactiva prepared statements (incompatíveis com PgBouncer)
-var connString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-var pooledConnBuilder = new NpgsqlConnectionStringBuilder(connString)
+// Database — ligação directa ao Supabase Postgres para pedidos da API
+// DirectConnection usa porta 5432 directa (sem PgBouncer), mais estável para queries curtas
+var directConn = builder.Configuration.GetConnectionString("DirectConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")!;
+var directConnBuilder = new NpgsqlConnectionStringBuilder(directConn)
 {
     MaxPoolSize = 8,
-    MinPoolSize = 1,
-    ConnectionIdleLifetime = 30,
+    MinPoolSize = 0,
+    ConnectionIdleLifetime = 60,
     Timeout = 15,
-    KeepAlive = 10       // envia keepalive a cada 10s para evitar conexões stale
+    KeepAlive = 30
 };
-var connStringWithPool = pooledConnBuilder.ConnectionString;
+var efConnString = directConnBuilder.ConnectionString;
 
 builder.Services.AddDbContext<StockoDbContext>(options =>
-    options.UseNpgsql(connStringWithPool));
+    options.UseNpgsql(efConnString));
 
 // Supabase Client — Singleton para evitar InitializeAsync().Wait() em cada request
 builder.Services.AddSingleton<Supabase.Client>(sp =>
@@ -36,7 +38,7 @@ builder.Services.AddSingleton<Supabase.Client>(sp =>
 });
 
 // Hangfire — usa Session pooler (porta 5432) porque precisa de advisory locks incompatíveis com Transaction pooler
-var hangfireBaseConn = builder.Configuration.GetConnectionString("HangfireConnection") ?? connString;
+var hangfireBaseConn = builder.Configuration.GetConnectionString("HangfireConnection") ?? directConn;
 var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(hangfireBaseConn)
 {
     MaxPoolSize = 5,
@@ -124,21 +126,11 @@ app.MapControllers();
 // Health check
 app.MapGet("/health", () => "OK");
 
-// Seed base de dados — usa ligação directa para migrações (PgBouncer transaction mode não suporta DDL)
+// Seed base de dados — migrações e seed usam a mesma ligação directa do EF Core
 using (var scope = app.Services.CreateScope())
 {
-    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    var migrationConn = config.GetConnectionString("MigrationConnection")
-        ?? config.GetConnectionString("DefaultConnection")!;
-
-    var migrationOptions = new DbContextOptionsBuilder<StockoDbContext>()
-        .UseNpgsql(migrationConn)
-        .Options;
-
-    using var migrationDb = new StockoDbContext(migrationOptions);
-    await migrationDb.Database.MigrateAsync();
-
     var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
+    await db.Database.MigrateAsync();
     await StockSeeder.SeedAsync(db);
 }
 
