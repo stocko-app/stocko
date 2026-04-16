@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Stocko.Api.Data;
 using Stocko.Api.Data.Seeds;
 using Stocko.Api.Jobs;
@@ -8,10 +9,17 @@ using Stocko.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database — pool limitado para não esgotar conexões do Supabase free tier (max ~60)
+// Database — PgBouncer transaction pooler; PrepareThreshold=0 desactiva prepared statements (incompatíveis com PgBouncer)
 var connString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-var connStringWithPool = connString
-    + ";Maximum Pool Size=8;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15;Prepare Threshold=0";
+var pooledConnBuilder = new NpgsqlConnectionStringBuilder(connString)
+{
+    MaxPoolSize = 8,
+    MinPoolSize = 1,
+    ConnectionIdleLifetime = 30,
+    Timeout = 15,
+    PrepareThreshold = 0
+};
+var connStringWithPool = pooledConnBuilder.ConnectionString;
 
 builder.Services.AddDbContext<StockoDbContext>(options =>
     options.UseNpgsql(connStringWithPool));
@@ -28,8 +36,15 @@ builder.Services.AddSingleton<Supabase.Client>(sp =>
 });
 
 // Hangfire — pool próprio pequeno + workers limitados
-var hangfireConnString = connString
-    + ";Maximum Pool Size=5;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15;Prepare Threshold=0";
+var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(connString)
+{
+    MaxPoolSize = 5,
+    MinPoolSize = 1,
+    ConnectionIdleLifetime = 30,
+    Timeout = 15,
+    PrepareThreshold = 0
+};
+var hangfireConnString = hangfireConnBuilder.ConnectionString;
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(c =>
         c.UseNpgsqlConnection(hangfireConnString)));
