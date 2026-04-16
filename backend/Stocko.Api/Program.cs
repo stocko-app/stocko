@@ -34,8 +34,9 @@ builder.Services.AddSingleton<Supabase.Client>(sp =>
     return client;
 });
 
-// Hangfire — pool próprio pequeno + workers limitados
-var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(connString)
+// Hangfire — usa Session pooler (porta 5432) porque precisa de advisory locks incompatíveis com Transaction pooler
+var hangfireBaseConn = builder.Configuration.GetConnectionString("HangfireConnection") ?? connString;
+var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(hangfireBaseConn)
 {
     MaxPoolSize = 5,
     MinPoolSize = 1,
