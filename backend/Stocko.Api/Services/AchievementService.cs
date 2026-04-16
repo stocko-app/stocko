@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Models;
 
@@ -19,12 +20,12 @@ public class AchievementService
         var user = await _db.Users.FindAsync(userId);
         if (user == null) return;
 
-        var existing = _db.Achievements
+        var existing = (await _db.Achievements
             .Where(a => a.UserId == userId)
             .Select(a => a.Type)
-            .ToHashSet();
+            .ToListAsync()).ToHashSet();
 
-        var weeksPlayed = _db.WeeklyScores.Count(ws => ws.UserId == userId);
+        var weeksPlayed = await _db.WeeklyScores.CountAsync(ws => ws.UserId == userId);
         Console.WriteLine($"🔍 CheckAchievements: userId={userId} weeksPlayed={weeksPlayed} existing={existing.Count}");
 
         var newAchievements = new List<Achievement>();
@@ -52,7 +53,7 @@ public class AchievementService
     {
         if (existing.Contains("first_week")) return;
 
-        var weeksPlayed = _db.WeeklyScores.Count(ws => ws.UserId == userId);
+        var weeksPlayed = await _db.WeeklyScores.CountAsync(ws => ws.UserId == userId);
         if (weeksPlayed >= 1)
             newAchievements.Add(Award(userId, "first_week"));
     }
@@ -110,20 +111,20 @@ public class AchievementService
         if (existing.Contains("captain_correct") && existing.Contains("never_waste_captain"))
             return;
 
-        var gameWeeks = _db.GameWeeks
+        var gameWeeks = await _db.GameWeeks
             .OrderByDescending(gw => gw.WeekStart)
             .Take(8)
             .Select(gw => gw.Id)
-            .ToList();
+            .ToListAsync();
 
-        var picksWithManualCaptain = _db.Picks
+        var picksWithManualCaptain = await _db.Picks
             .Where(p => p.UserId == userId &&
                        gameWeeks.Contains(p.GameWeekId) &&
                        p.CaptainActivatedDay != null &&
                        !p.IsAuto)
             .Select(p => p.GameWeekId)
             .Distinct()
-            .Count();
+            .CountAsync();
 
         if (!existing.Contains("never_waste_captain") && picksWithManualCaptain >= 8)
             newAchievements.Add(Award(userId, "never_waste_captain"));
@@ -133,7 +134,7 @@ public class AchievementService
     {
         if (!existing.Contains("league_founder"))
         {
-            var isOwner = _db.Leagues.Any(l => l.OwnerId == userId);
+            var isOwner = await _db.Leagues.AnyAsync(l => l.OwnerId == userId);
             if (isOwner)
                 newAchievements.Add(Award(userId, "league_founder"));
         }

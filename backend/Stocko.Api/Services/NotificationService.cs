@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
 using Stocko.Api.Data;
@@ -70,18 +71,18 @@ public class NotificationService
     {
         // Só para quem NÃO fez picks esta semana
         var gameWeekService = new GameWeekService(_db);
-        var currentWeek = gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
 
-        var usersWithPicks = _db.Picks
+        var usersWithPicks = await _db.Picks
             .Where(p => p.GameWeekId == currentWeek.Id)
             .Select(p => p.UserId)
             .Distinct()
-            .ToList();
+            .ToListAsync();
 
-        var usersWithoutPicks = _db.Users
+        var usersWithoutPicks = await _db.Users
             .Where(u => !usersWithPicks.Contains(u.Id) && u.ExpoPushToken != null)
             .Select(u => u.Id)
-            .ToList();
+            .ToListAsync();
 
         if (!usersWithoutPicks.Any()) return;
 
@@ -99,20 +100,20 @@ public class NotificationService
     public async Task SendCaptainReminderAsync()
     {
         var gameWeekService = new GameWeekService(_db);
-        var currentWeek = gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
 
         // Utilizadores com picks mas sem capitão activado
-        var usersWithPicks = _db.Picks
+        var usersWithPicks = await _db.Picks
             .Where(p => p.GameWeekId == currentWeek.Id && !p.IsAuto)
             .Select(p => p.UserId)
             .Distinct()
-            .ToList();
+            .ToListAsync();
 
-        var usersWithCaptain = _db.Picks
+        var usersWithCaptain = await _db.Picks
             .Where(p => p.GameWeekId == currentWeek.Id && p.CaptainActivatedDay != null)
             .Select(p => p.UserId)
             .Distinct()
-            .ToList();
+            .ToListAsync();
 
         var usersNeedingCaptain = usersWithPicks
             .Where(u => !usersWithCaptain.Contains(u))

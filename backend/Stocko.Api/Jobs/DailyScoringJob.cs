@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
 
@@ -33,13 +34,13 @@ public class DailyScoringJob
         if (today.DayOfWeek == DayOfWeek.Friday)
         {
             var gameWeekService = new GameWeekService(_db);
-            var currentWeek = gameWeekService.GetOrCreateCurrentWeek();
+            var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
 
             await _scoringService.UpdateStreaksAsync(currentWeek.Id);
 
-            var scores = _db.WeeklyScores
+            var scores = await _db.WeeklyScores
                 .Where(ws => ws.GameWeekId == currentWeek.Id)
-                .ToList();
+                .ToListAsync();
 
             var totalPlayers = scores.Count;
 

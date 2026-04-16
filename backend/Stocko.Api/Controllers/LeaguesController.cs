@@ -32,15 +32,15 @@ public class LeaguesController : ControllerBase
         // Free: máx 1 liga · Plus/Pro: ilimitadas
         if (user.Plan == "free")
         {
-            var existingLeagues = _db.LeagueMembers
-                .Count(lm => lm.UserId == userId);
+            var existingLeagues = await _db.LeagueMembers
+                .CountAsync(lm => lm.UserId == userId);
             if (existingLeagues >= 1)
                 return BadRequest("O plano Free permite apenas 1 liga. Faz upgrade para Plus para ligas ilimitadas.");
         }
 
         // Gerar código de convite único (8 caracteres)
         var inviteCode = GenerateInviteCode();
-        while (_db.Leagues.Any(l => l.InviteCode == inviteCode))
+        while (await _db.Leagues.AnyAsync(l => l.InviteCode == inviteCode))
             inviteCode = GenerateInviteCode();
 
         var league = new League
@@ -89,13 +89,13 @@ public class LeaguesController : ControllerBase
             return NotFound("Código de convite inválido.");
 
         // Verificar se já é membro
-        var alreadyMember = _db.LeagueMembers
-            .Any(lm => lm.LeagueId == league.Id && lm.UserId == userId);
+        var alreadyMember = await _db.LeagueMembers
+            .AnyAsync(lm => lm.LeagueId == league.Id && lm.UserId == userId);
         if (alreadyMember)
             return BadRequest("Já és membro desta liga.");
 
         // Verificar limite de membros
-        var memberCount = _db.LeagueMembers.Count(lm => lm.LeagueId == league.Id);
+        var memberCount = await _db.LeagueMembers.CountAsync(lm => lm.LeagueId == league.Id);
         if (memberCount >= league.MaxMembers)
             return BadRequest("Esta liga já atingiu o limite de membros.");
 
@@ -158,7 +158,7 @@ public class LeaguesController : ControllerBase
         var league = await _db.Leagues.FindAsync(id);
         if (league == null) return NotFound("Liga não encontrada.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
 
         // Buscar membros da liga
         var memberIds = await _db.LeagueMembers

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Models;
 using Stocko.Api.Services;
@@ -21,13 +22,13 @@ public class AutoPickJob
     {
         Console.WriteLine($"🕐 AutoPickJob iniciado: {DateTime.UtcNow:HH:mm:ss}");
 
-        var currentWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
 
         // Buscar semana anterior
-        var previousWeek = _db.GameWeeks
+        var previousWeek = await _db.GameWeeks
             .Where(w => w.WeekEnd < currentWeek.WeekStart)
             .OrderByDescending(w => w.WeekEnd)
-            .FirstOrDefault();
+            .FirstOrDefaultAsync();
 
         if (previousWeek == null)
         {
@@ -36,14 +37,14 @@ public class AutoPickJob
         }
 
         // Buscar todos os utilizadores
-        var allUsers = _db.Users.Select(u => u.Id).ToList();
+        var allUsers = await _db.Users.Select(u => u.Id).ToListAsync();
 
         // Buscar utilizadores que já fizeram picks esta semana
-        var usersWithPicks = _db.Picks
+        var usersWithPicks = await _db.Picks
             .Where(p => p.GameWeekId == currentWeek.Id)
             .Select(p => p.UserId)
             .Distinct()
-            .ToList();
+            .ToListAsync();
 
         // Utilizadores sem picks esta semana
         var usersWithoutPicks = allUsers
@@ -52,12 +53,14 @@ public class AutoPickJob
 
         int autoPickCount = 0;
 
+        // Carregar picks da semana anterior em batch para todos os users sem picks
+        var allPreviousPicks = await _db.Picks
+            .Where(p => usersWithoutPicks.Contains(p.UserId) && p.GameWeekId == previousWeek.Id)
+            .ToListAsync();
+
         foreach (var userId in usersWithoutPicks)
         {
-            // Buscar picks da semana anterior
-            var previousPicks = _db.Picks
-                .Where(p => p.UserId == userId && p.GameWeekId == previousWeek.Id)
-                .ToList();
+            var previousPicks = allPreviousPicks.Where(p => p.UserId == userId).ToList();
 
             if (!previousPicks.Any()) continue;
 

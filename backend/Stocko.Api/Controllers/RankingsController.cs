@@ -27,7 +27,7 @@ public class RankingsController : ControllerBase
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
 
         // Buscar todos os scores da semana ordenados
         var allScores = await _db.WeeklyScores
@@ -79,7 +79,7 @@ public class RankingsController : ControllerBase
         var user = await _db.Users.FindAsync(userId);
         if (user == null) return Unauthorized("Utilizador não encontrado.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
 
         // Buscar scores do mesmo tier
         var tierScores = await _db.WeeklyScores

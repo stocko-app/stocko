@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
 
@@ -20,19 +21,19 @@ public class StreakRiskJob
     {
         Console.WriteLine($"🕐 StreakRiskJob iniciado: {DateTime.UtcNow:HH:mm:ss}");
 
-        var currentWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
 
         // Utilizadores que já fizeram picks esta semana
-        var usersWithPicks = _db.Picks
+        var usersWithPicks = (await _db.Picks
             .Where(p => p.GameWeekId == currentWeek.Id)
             .Select(p => p.UserId)
             .Distinct()
-            .ToHashSet();
+            .ToListAsync()).ToHashSet();
 
         // Utilizadores com streak > 3 que NÃO fizeram picks esta semana
-        var atRisk = _db.Users
+        var atRisk = await _db.Users
             .Where(u => u.StreakWeeks > 3 && !usersWithPicks.Contains(u.Id))
-            .ToList();
+            .ToListAsync();
 
         if (!atRisk.Any())
         {

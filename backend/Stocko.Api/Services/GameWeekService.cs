@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Models;
 
@@ -12,42 +13,32 @@ public class GameWeekService
         _db = db;
     }
 
-    public GameWeek GetOrCreateCurrentWeek()
+    public async Task<GameWeek> GetOrCreateCurrentWeekAsync()
 	{
 		var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
 		DateOnly monday;
 
-		// Sábado → próxima semana (domingo é draft day, semana começa segunda)
 		if (today.DayOfWeek == DayOfWeek.Saturday)
-		{
 			monday = today.AddDays(2);
-		}
-		// Domingo → próxima semana (draft ainda aberto até meia-noite)
 		else if (today.DayOfWeek == DayOfWeek.Sunday)
-		{
 			monday = today.AddDays(1);
-		}
 		else
 		{
-			// Segunda a Sexta → semana actual
 			var daysBack = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
 			monday = today.AddDays(-daysBack);
 		}
 
 		var friday = monday.AddDays(4);
 
-		var existing = _db.GameWeeks.FirstOrDefault(w => w.WeekStart == monday);
+		var existing = await _db.GameWeeks.FirstOrDefaultAsync(w => w.WeekStart == monday);
 		if (existing != null) return existing;
 
-		// Deadline: Domingo 23h59 Lisboa (= Segunda 00h00 menos 1 min)
-		// = Domingo 23h59 Lisboa → em UTC: 23h59 - lisbonOffset
 		var sunday = monday.AddDays(-1);
 		var lisbonOffset = GetLisbonOffset(sunday);
 		var deadline = new DateTime(sunday.Year, sunday.Month, sunday.Day, 23, 59, 0, DateTimeKind.Utc)
 			.AddHours(-lisbonOffset);
 
-		// Resultados finais: Sexta 22h00 Lisboa (após fecho US)
 		var lisbonOffsetFriday = GetLisbonOffset(friday);
 		var resultsAt = new DateTime(friday.Year, friday.Month, friday.Day, 22, 0, 0, DateTimeKind.Utc)
 			.AddHours(-lisbonOffsetFriday);
@@ -63,7 +54,7 @@ public class GameWeekService
 		};
 
 		_db.GameWeeks.Add(gameWeek);
-		_db.SaveChanges();
+		await _db.SaveChangesAsync();
 
 		Console.WriteLine($"✅ GameWeek criada: {monday} → {friday} (deadline: {deadline:dd/MM HH:mm} UTC)");
 		return gameWeek;
@@ -88,17 +79,16 @@ public class GameWeekService
     }
 
     // Cria sempre a semana a seguir à actual (independente do dia)
-    public GameWeek GetOrCreateNextWeek()
+    public async Task<GameWeek> GetOrCreateNextWeekAsync()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        // Calcular a próxima Segunda-feira (nunca hoje)
         int daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
         if (daysUntilMonday == 0) daysUntilMonday = 7;
         var nextMonday = today.AddDays(daysUntilMonday);
         var nextFriday = nextMonday.AddDays(4);
 
-        var existing = _db.GameWeeks.FirstOrDefault(w => w.WeekStart == nextMonday);
+        var existing = await _db.GameWeeks.FirstOrDefaultAsync(w => w.WeekStart == nextMonday);
         if (existing != null) return existing;
 
         var nextSunday = nextMonday.AddDays(-1);
@@ -120,7 +110,7 @@ public class GameWeekService
         };
 
         _db.GameWeeks.Add(gameWeek);
-        _db.SaveChanges();
+        await _db.SaveChangesAsync();
 
         Console.WriteLine($"✅ GameWeek seguinte criada: {nextMonday} → {nextFriday} (deadline: {deadline:dd/MM HH:mm} UTC)");
         return gameWeek;
@@ -129,13 +119,13 @@ public class GameWeekService
     // Devolve a semana que deve receber novos picks:
     // — se o deadline da semana actual não passou → semana actual
     // — se já passou → semana seguinte
-    public (GameWeek week, bool isNextWeek) GetDraftTargetWeek()
+    public async Task<(GameWeek week, bool isNextWeek)> GetDraftTargetWeekAsync()
     {
-        var current = GetOrCreateCurrentWeek();
+        var current = await GetOrCreateCurrentWeekAsync();
         if (!IsDeadlinePassed(current))
             return (current, false);
 
-        return (GetOrCreateNextWeek(), true);
+        return (await GetOrCreateNextWeekAsync(), true);
     }
 
     public bool IsDeadlinePassed(GameWeek week)

@@ -29,7 +29,7 @@ public class PicksController : ControllerBase
         var user = await _db.Users.FindAsync(userId);
         if (user == null) return Unauthorized("Utilizador não encontrado.");
 
-        var (gameWeek, isNextWeek) = _gameWeekService.GetDraftTargetWeek();
+        var (gameWeek, isNextWeek) = await _gameWeekService.GetDraftTargetWeekAsync();
 
         const int maxPicks = 5;
 
@@ -51,9 +51,9 @@ public class PicksController : ControllerBase
             return BadRequest("Uma ou mais ações não são válidas.");
 
         // Remover picks anteriores desta semana
-        var existingPicks = _db.Picks
+        var existingPicks = await _db.Picks
             .Where(p => p.UserId == userId && p.GameWeekId == gameWeek.Id)
-            .ToList();
+            .ToListAsync();
         _db.Picks.RemoveRange(existingPicks);
 
         // Criar novos picks
@@ -103,8 +103,8 @@ public class PicksController : ControllerBase
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var currentWeek = _gameWeekService.GetOrCreateCurrentWeek();
-        var (draftWeek, isNextWeek) = _gameWeekService.GetDraftTargetWeek();
+        var currentWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
+        var (draftWeek, isNextWeek) = await _gameWeekService.GetDraftTargetWeekAsync();
 
         // Picks da semana actual (para pontos)
         var currentPicks = await _db.Picks
@@ -175,7 +175,7 @@ public class PicksController : ControllerBase
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         // Só pode activar Segunda a Quinta
@@ -185,7 +185,7 @@ public class PicksController : ControllerBase
             return BadRequest("O capitão só pode ser activado de Segunda a Quinta. Na Sexta é automático.");
 
         // Verificar se já activou o capitão esta semana
-        var alreadyActivated = _db.Picks.Any(p =>
+        var alreadyActivated = await _db.Picks.AnyAsync(p =>
             p.UserId == userId &&
             p.GameWeekId == gameWeek.Id &&
             p.CaptainActivatedDay != null);
@@ -222,7 +222,7 @@ public class PicksController : ControllerBase
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         var picks = await _db.Picks
@@ -231,11 +231,18 @@ public class PicksController : ControllerBase
             .ThenInclude(s => s.Prices.Where(sp => sp.Date == today))
             .ToListAsync();
 
+        // Carregar DailyScores em batch para evitar N queries síncronas
+        var pickIds = picks.Select(p => p.Id).ToList();
+        var todayScores = await _db.DailyScores
+            .Where(ds => pickIds.Contains(ds.PickId) && ds.Date == today)
+            .ToListAsync();
+        var weekScores = await _db.DailyScores
+            .Where(ds => pickIds.Contains(ds.PickId))
+            .ToListAsync();
+
         var result = picks.Select(p =>
         {
-            var todayScore = _db.DailyScores
-                .FirstOrDefault(ds => ds.PickId == p.Id && ds.Date == today);
-
+            var todayScore = todayScores.FirstOrDefault(ds => ds.PickId == p.Id);
             var todayPrice = p.Stock.Prices.FirstOrDefault();
 
             return new
@@ -250,15 +257,11 @@ public class PicksController : ControllerBase
                 TodayBase = todayScore?.BasePoints ?? 0,
                 TodayBonus = todayScore?.DayPositiveBonus ?? 0,
                 TodayCaptainBonus = todayScore?.CaptainBonus ?? 0,
-                WeekPoints = _db.DailyScores
-                    .Where(ds => ds.PickId == p.Id)
-                    .Sum(ds => ds.Total)
+                WeekPoints = weekScores.Where(ds => ds.PickId == p.Id).Sum(ds => ds.Total)
             };
         }).ToList();
 
-        var indexBonus = _db.DailyScores
-            .Where(ds => ds.UserId == userId && ds.Date == today)
-            .Any() ? 1 : 0; // simplificado — o bónus índice é calculado no ScoringService
+        var indexBonus = todayScores.Any() ? 1 : 0;
 
         return Ok(new
         {
@@ -277,7 +280,7 @@ public class PicksController : ControllerBase
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var gameWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
 
         var dailyScores = await _db.DailyScores
             .Where(ds => ds.UserId == userId &&

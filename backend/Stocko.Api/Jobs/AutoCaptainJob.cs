@@ -22,7 +22,7 @@ public class AutoCaptainJob
         Console.WriteLine($"🕐 AutoCaptainJob iniciado: {DateTime.UtcNow:HH:mm:ss}");
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var currentWeek = _gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
 
         // Picks desta semana sem capitão activado
         var picksWithoutCaptain = await _db.Picks

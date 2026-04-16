@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
 
@@ -66,7 +67,7 @@ public class MarketScoringJob
 
         // Actualizar ranks após cada scoring para manter rankings actualizados
         var gameWeekService = new GameWeekService(_db);
-        var currentWeek = gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
         await _scoringService.UpdateRanksAsync(currentWeek.Id);
 
         Console.WriteLine($"✅ MarketScoringJob [{label}] concluído: {today}");
@@ -75,13 +76,13 @@ public class MarketScoringJob
     private async Task SendWeeklyResultsAsync()
     {
         var gameWeekService = new GameWeekService(_db);
-        var currentWeek = gameWeekService.GetOrCreateCurrentWeek();
+        var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
 
         await _scoringService.UpdateStreaksAsync(currentWeek.Id);
 
-        var scores = _db.WeeklyScores
+        var scores = await _db.WeeklyScores
             .Where(ws => ws.GameWeekId == currentWeek.Id)
-            .ToList();
+            .ToListAsync();
 
         var totalPlayers = scores.Count;
         foreach (var score in scores)

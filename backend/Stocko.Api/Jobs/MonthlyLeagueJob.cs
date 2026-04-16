@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
 
@@ -33,7 +34,7 @@ public class MonthlyLeagueJob
     {
         Console.WriteLine($"🕐 MonthlyLeagueJob iniciado: {DateTime.UtcNow:yyyy-MM-dd HH:mm}");
 
-        var totalUsers = _db.Users.Count();
+        var totalUsers = await _db.Users.CountAsync();
         var activeTiers = GetActiveTiers(totalUsers);
 
         Console.WriteLine($"📊 Total utilizadores: {totalUsers} | Tiers activos: {string.Join(", ", activeTiers)}");

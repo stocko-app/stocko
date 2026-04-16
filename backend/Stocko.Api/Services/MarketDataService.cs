@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using Stocko.Api.Data;
 using Stocko.Api.Models;
@@ -144,7 +145,7 @@ public class MarketDataService
 
     public async Task FetchAndCachePriceAsync(string ticker)
     {
-        var stock = _db.Stocks.FirstOrDefault(s => s.Ticker == ticker);
+        var stock = await _db.Stocks.FirstOrDefaultAsync(s => s.Ticker == ticker);
         if (stock == null) return;
 
         var result = await FetchFromTwelveDataAsync(ticker)
@@ -157,10 +158,10 @@ public class MarketDataService
             return;
         }
 
-        var exists = _db.StockPrices.Any(p => p.StockId == stock.Id && p.Date == result.Date);
+        var exists = await _db.StockPrices.AnyAsync(p => p.StockId == stock.Id && p.Date == result.Date);
         if (exists)
         {
-            var existing = _db.StockPrices.First(p => p.StockId == stock.Id && p.Date == result.Date);
+            var existing = await _db.StockPrices.FirstAsync(p => p.StockId == stock.Id && p.Date == result.Date);
             existing.Close = result.Close;
             existing.PctChange = result.PctChange;
         }

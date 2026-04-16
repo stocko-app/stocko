@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Stocko.Api.Data;
 using Supabase.Gotrue;
@@ -25,7 +26,7 @@ public class AuthService
 
     public async Task<AuthResult> RegisterAsync(string email, string password, string username)
     {
-        var usernameExists = _db.Users.Any(u => u.Username == username);
+        var usernameExists = await _db.Users.AnyAsync(u => u.Username == username);
         if (usernameExists)
             return new AuthResult { Success = false, Error = "Username já está em uso." };
 
@@ -69,10 +70,10 @@ public class AuthService
         // Se não contém '@', é um username — procurar o email na BD
         var email = emailOrUsername.Contains('@')
             ? emailOrUsername
-            : _db.Users
+            : await _db.Users
                 .Where(u => u.Username.ToLower() == emailOrUsername.ToLower())
                 .Select(u => u.Email)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
 
         if (email == null)
             return new AuthResult { Success = false, Error = "Utilizador não encontrado." };
@@ -98,9 +99,9 @@ public class AuthService
         }
     }
 
-    public bool UsernameExists(string username)
+    public async Task<bool> UsernameExistsAsync(string username)
     {
-        return _db.Users.Any(u => u.Username.ToLower() == username.ToLower());
+        return await _db.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower());
     }
 
     public async Task<bool> SendPasswordResetAsync(string email)

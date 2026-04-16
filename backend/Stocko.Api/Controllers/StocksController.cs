@@ -116,7 +116,7 @@ public class StocksController : ControllerBase
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var gameWeek = gameWeekService.GetOrCreateCurrentWeek();
+        var gameWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
 
         var tickers = await _db.Picks
             .Where(p => p.UserId == userId && p.GameWeekId == gameWeek.Id)

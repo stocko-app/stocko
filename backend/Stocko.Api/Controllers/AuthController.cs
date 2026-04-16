@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
 
@@ -60,28 +61,28 @@ public class AuthController : ControllerBase
 	
     // POST /api/auth/check-user — verificar se utilizador existe (login identifier-first)
     [HttpPost("check-user")]
-    public IActionResult CheckUser([FromBody] CheckUserRequest request)
+    public async Task<IActionResult> CheckUser([FromBody] CheckUserRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.EmailOrUsername))
             return BadRequest("Campo obrigatório.");
 
         bool exists;
         if (request.EmailOrUsername.Contains('@'))
-            exists = _db.Users.Any(u => u.Email.ToLower() == request.EmailOrUsername.ToLower());
+            exists = await _db.Users.AnyAsync(u => u.Email.ToLower() == request.EmailOrUsername.ToLower());
         else
-            exists = _db.Users.Any(u => u.Username.ToLower() == request.EmailOrUsername.ToLower());
+            exists = await _db.Users.AnyAsync(u => u.Username.ToLower() == request.EmailOrUsername.ToLower());
 
         return Ok(new { Exists = exists });
     }
 
     // GET /api/auth/check-username/{username} — verificar disponibilidade do username
     [HttpGet("check-username/{username}")]
-    public IActionResult CheckUsername(string username)
+    public async Task<IActionResult> CheckUsername(string username)
     {
         if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
             return BadRequest("Username deve ter pelo menos 3 caracteres.");
 
-        var exists = _authService.UsernameExists(username);
+        var exists = await _authService.UsernameExistsAsync(username);
         return Ok(new { Available = !exists });
     }
 
