@@ -16,7 +16,8 @@ var pooledConnBuilder = new NpgsqlConnectionStringBuilder(connString)
     MaxPoolSize = 8,
     MinPoolSize = 1,
     ConnectionIdleLifetime = 30,
-    Timeout = 15
+    Timeout = 15,
+    KeepAlive = 10       // envia keepalive a cada 10s para evitar conexões stale
 };
 var connStringWithPool = pooledConnBuilder.ConnectionString;
 

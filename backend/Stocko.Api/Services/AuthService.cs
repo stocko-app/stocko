@@ -67,19 +67,25 @@ public class AuthService
 
     public async Task<AuthResult> LoginAsync(string emailOrUsername, string password)
     {
-        // Se não contém '@', é um username — procurar o email na BD
-        var email = emailOrUsername.Contains('@')
-            ? emailOrUsername
-            : await _db.Users
-                .Where(u => u.Username.ToLower() == emailOrUsername.ToLower())
-                .Select(u => u.Email)
-                .FirstOrDefaultAsync();
-
-        if (email == null)
-            return new AuthResult { Success = false, Error = "Utilizador não encontrado." };
-
         try
         {
+            // Se não contém '@', é um username — procurar o email na BD
+            string? email;
+            if (emailOrUsername.Contains('@'))
+            {
+                email = emailOrUsername;
+            }
+            else
+            {
+                email = await _db.Users
+                    .Where(u => u.Username.ToLower() == emailOrUsername.ToLower())
+                    .Select(u => u.Email)
+                    .FirstOrDefaultAsync();
+
+                if (email == null)
+                    return new AuthResult { Success = false, Error = "Utilizador não encontrado." };
+            }
+
             var response = await _supabase.Auth.SignIn(email, password);
 
             if (response?.User == null)
