@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Database — pool limitado para não esgotar conexões do Supabase free tier (max ~60)
 var connString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 var connStringWithPool = connString
-    + ";Maximum Pool Size=8;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15";
+    + ";Maximum Pool Size=8;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15;Prepare Threshold=0";
 
 builder.Services.AddDbContext<StockoDbContext>(options =>
     options.UseNpgsql(connStringWithPool));
@@ -29,7 +29,7 @@ builder.Services.AddSingleton<Supabase.Client>(sp =>
 
 // Hangfire — pool próprio pequeno + workers limitados
 var hangfireConnString = connString
-    + ";Maximum Pool Size=5;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15";
+    + ";Maximum Pool Size=5;Minimum Pool Size=1;Connection Idle Lifetime=30;Timeout=15;Prepare Threshold=0";
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(c =>
         c.UseNpgsqlConnection(hangfireConnString)));
@@ -109,11 +109,21 @@ app.MapControllers();
 // Health check
 app.MapGet("/health", () => "OK");
 
-// Seed base de dados
+// Seed base de dados — usa ligação directa para migrações (PgBouncer transaction mode não suporta DDL)
 using (var scope = app.Services.CreateScope())
 {
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var migrationConn = config.GetConnectionString("MigrationConnection")
+        ?? config.GetConnectionString("DefaultConnection")!;
+
+    var migrationOptions = new DbContextOptionsBuilder<StockoDbContext>()
+        .UseNpgsql(migrationConn)
+        .Options;
+
+    using var migrationDb = new StockoDbContext(migrationOptions);
+    await migrationDb.Database.MigrateAsync();
+
     var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
-    await db.Database.MigrateAsync();
     await StockSeeder.SeedAsync(db);
 }
 
