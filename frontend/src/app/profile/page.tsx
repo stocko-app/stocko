@@ -104,7 +104,9 @@ export default function ProfilePage() {
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-  const [showPwd, setShowPwd] = useState(false);
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdError, setPwdError] = useState("");
   const [pwdOk, setPwdOk] = useState("");
@@ -155,6 +157,9 @@ export default function ProfilePage() {
       setCurrentPwd("");
       setNewPwd("");
       setConfirmPwd("");
+      setShowCurrentPwd(false);
+      setShowNewPwd(false);
+      setShowConfirmPwd(false);
     } catch (err: unknown) {
       setPwdError(err instanceof Error ? err.message : "Não foi possível alterar a password.");
     } finally {
@@ -241,21 +246,31 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Password actual</label>
-              <input
-                type={showPwd ? "text" : "password"}
-                value={currentPwd}
-                onChange={(e) => { setCurrentPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
-                autoComplete="current-password"
-                className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showCurrentPwd ? "text" : "password"}
+                  value={currentPwd}
+                  onChange={(e) => { setCurrentPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
+                  autoComplete="current-password"
+                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPwd((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  aria-label={showCurrentPwd ? "Ocultar password actual" : "Mostrar password actual"}
+                >
+                  {showCurrentPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Nova password</label>
               <div className="relative">
                 <input
-                  type={showPwd ? "text" : "password"}
+                  type={showNewPwd ? "text" : "password"}
                   value={newPwd}
                   onChange={(e) => { setNewPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
                   autoComplete="new-password"
@@ -264,25 +279,35 @@ export default function ProfilePage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPwd((s) => !s)}
+                  onClick={() => setShowNewPwd((s) => !s)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-                  aria-label={showPwd ? "Ocultar passwords" : "Mostrar passwords"}
+                  aria-label={showNewPwd ? "Ocultar nova password" : "Mostrar nova password"}
                 >
-                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Confirmar nova password</label>
-              <input
-                type={showPwd ? "text" : "password"}
-                value={confirmPwd}
-                onChange={(e) => { setConfirmPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
-                autoComplete="new-password"
-                className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30"
-                placeholder="repete a nova password"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPwd ? "text" : "password"}
+                  value={confirmPwd}
+                  onChange={(e) => { setConfirmPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
+                  autoComplete="new-password"
+                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  placeholder="repete a nova password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPwd((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  aria-label={showConfirmPwd ? "Ocultar confirmação" : "Mostrar confirmação"}
+                >
+                  {showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {pwdError && (
