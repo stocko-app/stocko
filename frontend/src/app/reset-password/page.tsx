@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart2, Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_RULE_HINT_PT,
+  validateNewPassword,
+} from "@/lib/passwordPolicy";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -31,8 +36,9 @@ export default function ResetPasswordPage() {
       setError("As passwords não coincidem.");
       return;
     }
-    if (password.length < 6) {
-      setError("A password deve ter pelo menos 6 caracteres.");
+    const pwdErr = validateNewPassword(password);
+    if (pwdErr) {
+      setError(pwdErr);
       return;
     }
     if (!accessToken) {
@@ -110,7 +116,7 @@ export default function ResetPasswordPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                    placeholder="mínimo 6 caracteres"
+                    placeholder={`mínimo ${PASSWORD_MIN_LENGTH} caracteres`}
                     required
                     autoFocus
                     className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all pr-10"
@@ -123,6 +129,7 @@ export default function ResetPasswordPage() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-slate-500 text-xs mt-1">{PASSWORD_RULE_HINT_PT}</p>
               </div>
 
               {/* confirmar password */}
@@ -148,7 +155,12 @@ export default function ResetPasswordPage() {
 
               <button
                 type="submit"
-                disabled={loading || !password || !confirm}
+                disabled={
+                  loading ||
+                  !password ||
+                  !confirm ||
+                  !!validateNewPassword(password)
+                }
                 className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
               >
                 {loading ? (

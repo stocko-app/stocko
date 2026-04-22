@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart2, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
+import { PASSWORD_RULE_HINT_PT, isPasswordLongEnoughForLogin } from "@/lib/passwordPolicy";
 import { useAuth } from "@/store/auth";
 
 export default function LoginPage() {
@@ -149,6 +150,7 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-slate-500 text-xs mt-1">{PASSWORD_RULE_HINT_PT}</p>
               </div>
 
               {error && (
@@ -159,7 +161,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading || !password}
+                disabled={loading || !isPasswordLongEnoughForLogin(password)}
                 className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
               >
                 {loading ? (

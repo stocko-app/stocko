@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart2, Eye, EyeOff, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_RULE_HINT_PT,
+  validateNewPassword,
+} from "@/lib/passwordPolicy";
 import { useAuth } from "@/store/auth";
 
 export default function RegisterPage() {
@@ -168,9 +173,9 @@ export default function RegisterPage() {
                   name="password"
                   value={form.password}
                   onChange={handleChange}
-                  placeholder="mínimo 8 caracteres"
+                  placeholder={`mínimo ${PASSWORD_MIN_LENGTH} caracteres`}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all pr-10"
                 />
                 <button
@@ -181,6 +186,7 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-slate-500 text-xs mt-1">{PASSWORD_RULE_HINT_PT}</p>
             </div>
 
             {/* erro */}
@@ -193,7 +199,12 @@ export default function RegisterPage() {
             {/* submit */}
             <button
               type="submit"
-              disabled={loading || usernameStatus === "taken" || emailValid === false}
+              disabled={
+                loading ||
+                usernameStatus === "taken" ||
+                emailValid === false ||
+                !!validateNewPassword(form.password)
+              }
               className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2"
             >
               {loading ? (

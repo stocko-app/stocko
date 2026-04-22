@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Stocko.Api.Auth;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
 
@@ -25,6 +26,9 @@ public class AuthController : ControllerBase
             string.IsNullOrWhiteSpace(request.Password) ||
             string.IsNullOrWhiteSpace(request.Username))
             return BadRequest("Email, password e username são obrigatórios.");
+
+        if (request.Password.Length < PasswordPolicy.MinLength)
+            return BadRequest(PasswordPolicy.MinLengthMessage);
 
         var result = await _authService.RegisterAsync(request.Email, request.Password, request.Username);
 
@@ -116,8 +120,8 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.NewPassword))
             return BadRequest("Token e nova password são obrigatórios.");
 
-        if (request.NewPassword.Length < 6)
-            return BadRequest("A password deve ter pelo menos 6 caracteres.");
+        if (request.NewPassword.Length < PasswordPolicy.MinLength)
+            return BadRequest(PasswordPolicy.MinLengthMessage);
 
         var result = await _authService.ResetPasswordAsync(request.AccessToken, request.NewPassword);
 
