@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart2, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
@@ -19,6 +19,15 @@ export default function LoginPage() {
   const [checking, setChecking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [passwordChangedBanner, setPasswordChangedBanner] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("passwordChanged") === "1") {
+      setPasswordChangedBanner("Password alterada com sucesso. Entra com a nova password.");
+      router.replace("/login", { scroll: false });
+    }
+  }, [router]);
 
   async function handleIdentifier(e: React.FormEvent) {
     e.preventDefault();
@@ -75,6 +84,11 @@ export default function LoginPage() {
 
         {/* card */}
         <div className="glass rounded-2xl p-8">
+          {passwordChangedBanner && (
+            <p className="text-success text-sm bg-success/10 border border-success/20 rounded-lg px-4 py-2 mb-5">
+              {passwordChangedBanner}
+            </p>
+          )}
 
           {/* passo 1 — identificador */}
           {step === "identifier" && (

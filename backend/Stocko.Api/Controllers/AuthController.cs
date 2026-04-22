@@ -130,6 +130,47 @@ public class AuthController : ControllerBase
 
         return Ok(new { Message = "Password alterada com sucesso." });
     }
+
+    // POST /api/auth/change-password — utilizador autenticado (Bearer)
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var userId = HttpContext.Items["UserId"] as Guid?;
+        if (userId == null)
+            return Unauthorized("Token inválido.");
+
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
+            return BadRequest("Password actual e nova são obrigatórias.");
+
+        if (request.CurrentPassword == request.NewPassword)
+            return BadRequest("A nova password tem de ser diferente da actual.");
+
+        if (request.NewPassword.Length < PasswordPolicy.MinLength)
+            return BadRequest(PasswordPolicy.MinLengthMessage);
+
+        var result = await _authService.ChangePasswordAsync(userId.Value, request.CurrentPassword, request.NewPassword);
+
+        if (!result.Success)
+            return BadRequest(result.Error);
+
+        if (result.Error == "PASSWORD_CHANGED_RELOGIN" || string.IsNullOrEmpty(result.AccessToken))
+        {
+            return Ok(new
+            {
+                Message = "Password alterada. Volta a fazer login com a nova password.",
+                AccessToken = (string?)null,
+                RequiresRelogin = true
+            });
+        }
+
+        return Ok(new
+        {
+            Message = "Password alterada com sucesso.",
+            result.AccessToken,
+            result.RefreshToken,
+            RequiresRelogin = false
+        });
+    }
 }
 
 public record RegisterRequest(string Email, string Password, string Username);
@@ -137,3 +178,4 @@ public record LoginRequest(string EmailOrUsername, string Password);
 public record CheckUserRequest(string EmailOrUsername);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string AccessToken, string NewPassword);
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
