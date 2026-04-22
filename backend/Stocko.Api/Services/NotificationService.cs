@@ -28,10 +28,10 @@ public class NotificationService
     // Enviar notificação para múltiplos utilizadores
     public async Task SendToUsersAsync(List<Guid> userIds, string title, string body, object? data = null)
     {
-        var tokens = _db.Users
+        var tokens = await _db.Users
             .Where(u => userIds.Contains(u.Id) && u.ExpoPushToken != null)
             .Select(u => u.ExpoPushToken!)
-            .ToList();
+            .ToListAsync();
 
         foreach (var batch in tokens.Chunk(100))
         {
@@ -42,10 +42,10 @@ public class NotificationService
     // Enviar para todos os utilizadores activos
     public async Task SendToAllAsync(string title, string body, object? data = null)
     {
-        var tokens = _db.Users
+        var tokens = await _db.Users
             .Where(u => u.ExpoPushToken != null)
             .Select(u => u.ExpoPushToken!)
-            .ToList();
+            .ToListAsync();
 
         foreach (var batch in tokens.Chunk(100))
         {

@@ -150,8 +150,8 @@ public class LeaguesController : ControllerBase
         if (userId == null) return Unauthorized("Token inválido.");
 
         // Verificar se é membro
-        var isMember = _db.LeagueMembers
-            .Any(lm => lm.LeagueId == id && lm.UserId == userId);
+        var isMember = await _db.LeagueMembers
+            .AnyAsync(lm => lm.LeagueId == id && lm.UserId == userId);
         if (!isMember)
             return Forbid();
 
@@ -220,8 +220,8 @@ public class LeaguesController : ControllerBase
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var isMember = _db.LeagueMembers
-            .Any(lm => lm.LeagueId == id && lm.UserId == userId);
+        var isMember = await _db.LeagueMembers
+            .AnyAsync(lm => lm.LeagueId == id && lm.UserId == userId);
         if (!isMember) return Forbid();
 
         var league = await _db.Leagues.FindAsync(id);
@@ -237,13 +237,19 @@ public class LeaguesController : ControllerBase
             .Take(20)
             .ToListAsync();
 
+        var weekIds = weeks.Select(w => w.Id).ToList();
+        var allScores = await _db.WeeklyScores
+            .Where(ws => weekIds.Contains(ws.GameWeekId) && memberIds.Contains(ws.UserId))
+            .Include(ws => ws.User)
+            .ToListAsync();
+
+        var scoresByWeek = allScores
+            .GroupBy(ws => ws.GameWeekId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(ws => ws.TotalPoints).ToList());
+
         var history = weeks.Select(gw =>
         {
-            var scores = _db.WeeklyScores
-                .Where(ws => ws.GameWeekId == gw.Id && memberIds.Contains(ws.UserId))
-                .Include(ws => ws.User)
-                .OrderByDescending(ws => ws.TotalPoints)
-                .ToList();
+            var scores = scoresByWeek.GetValueOrDefault(gw.Id) ?? [];
 
             return new
             {

@@ -24,7 +24,14 @@ var directConnBuilder = new NpgsqlConnectionStringBuilder(directConn)
 var efConnString = directConnBuilder.ConnectionString;
 
 builder.Services.AddDbContext<StockoDbContext>(options =>
-    options.UseNpgsql(efConnString));
+    options.UseNpgsql(efConnString, npgsql =>
+    {
+        npgsql.CommandTimeout(30);
+        npgsql.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(4),
+            errorCodesToAdd: null);
+    }));
 
 // Supabase Client — Singleton para evitar InitializeAsync().Wait() em cada request
 builder.Services.AddSingleton<Supabase.Client>(sp =>
@@ -41,10 +48,11 @@ builder.Services.AddSingleton<Supabase.Client>(sp =>
 var hangfireBaseConn = builder.Configuration.GetConnectionString("HangfireConnection") ?? directConn;
 var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(hangfireBaseConn)
 {
-    MaxPoolSize = 5,
-    MinPoolSize = 1,
-    ConnectionIdleLifetime = 30,
-    Timeout = 15
+    MaxPoolSize = 4,
+    MinPoolSize = 0,
+    ConnectionIdleLifetime = 60,
+    Timeout = 15,
+    KeepAlive = 30
 };
 var hangfireConnString = hangfireConnBuilder.ConnectionString;
 builder.Services.AddHangfire(config =>
@@ -52,7 +60,9 @@ builder.Services.AddHangfire(config =>
         c.UseNpgsqlConnection(hangfireConnString)));
 builder.Services.AddHangfireServer(options =>
 {
-    options.WorkerCount = 3; // reduzir workers para poupar conexões
+    // 1 worker: jobs pesados não competem entre si por CPU/DB na VM 256MB
+    options.WorkerCount = 1;
+    options.Queues = new[] { "default" };
 });
 
 // Services
@@ -123,8 +133,20 @@ app.UseHttpsRedirection();
 app.UseMiddleware<SupabaseAuthMiddleware>();
 app.MapControllers();
 
-// Health check
-app.MapGet("/health", () => "OK");
+// Health: verifica Postgres; o Fly pode reiniciar se isto falhar repetidamente
+app.MapGet("/health", async (StockoDbContext db) =>
+{
+    try
+    {
+        return await db.Database.CanConnectAsync()
+            ? Results.Text("OK")
+            : Results.StatusCode(503);
+    }
+    catch
+    {
+        return Results.StatusCode(503);
+    }
+});
 
 // Seed base de dados — migrações e seed usam a mesma ligação directa do EF Core
 using (var scope = app.Services.CreateScope())

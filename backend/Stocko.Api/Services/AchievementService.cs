@@ -77,9 +77,9 @@ public class AchievementService
 
     private async Task CheckRankingAchievements(Guid userId, HashSet<string> existing, List<Achievement> newAchievements)
     {
-        var scores = _db.WeeklyScores
+        var scores = await _db.WeeklyScores
             .Where(ws => ws.UserId == userId)
-            .ToList();
+            .ToListAsync();
 
         if (!scores.Any()) return;
 

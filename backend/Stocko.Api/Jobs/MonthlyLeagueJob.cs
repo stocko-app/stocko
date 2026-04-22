@@ -51,21 +51,21 @@ public class MonthlyLeagueJob
 
         foreach (var tier in activeTiers)
         {
-            var usersInTier = _db.Users
+            var usersInTier = await _db.Users
                 .Where(u => u.LeagueTier == tier)
-                .ToList();
+                .ToListAsync();
 
             if (usersInTier.Count < 2) continue;
 
             // Pontos acumulados dia a dia no mês anterior (ignora fronteiras de semana)
             var userIds = usersInTier.Select(u => u.Id).ToList();
-            var dailyTotals = _db.DailyScores
+            var dailyTotals = await _db.DailyScores
                 .Where(ds => userIds.Contains(ds.UserId) &&
                              ds.Date >= firstDayLastMonth &&
                              ds.Date <= lastDayLastMonth)
                 .GroupBy(ds => ds.UserId)
                 .Select(g => new { UserId = g.Key, Points = g.Sum(ds => ds.Total) })
-                .ToList();
+                .ToListAsync();
 
             var monthlyPoints = usersInTier
                 .Select(u => new
