@@ -1,24 +1,50 @@
+using Microsoft.EntityFrameworkCore;
+using Stocko.Api.Data;
 using Stocko.Api.Services;
 
 namespace Stocko.Api.Jobs;
 
+/// <summary>
+/// Cada ticker corre num scope próprio para não manter DbContext/conexão
+/// durante os delays de 8s entre chamadas às APIs (evita timeouts Npgsql).
+/// </summary>
 public class MarketDataJob
 {
-    private readonly MarketDataService _marketData;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public MarketDataJob(MarketDataService marketData)
+    public MarketDataJob(IServiceScopeFactory scopeFactory)
     {
-        _marketData = marketData;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task ExecuteAsync()
     {
-        // Timeout global de 8 minutos — garante que o job nunca bloqueia um worker indefinidamente
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(8));
         Console.WriteLine($"🕐 MarketDataJob iniciado: {DateTime.UtcNow:HH:mm:ss}");
         try
         {
-            await _marketData.FetchActiveStocksAsync(cts.Token);
+            List<string> tickers;
+            await using (var listScope = _scopeFactory.CreateAsyncScope())
+            {
+                var db = listScope.ServiceProvider.GetRequiredService<StockoDbContext>();
+                tickers = await db.Stocks
+                    .Where(s => s.Active)
+                    .Select(s => s.Ticker)
+                    .ToListAsync(cts.Token);
+            }
+
+            foreach (var ticker in tickers)
+            {
+                cts.Token.ThrowIfCancellationRequested();
+                await using (var workScope = _scopeFactory.CreateAsyncScope())
+                {
+                    var marketData = workScope.ServiceProvider.GetRequiredService<MarketDataService>();
+                    await marketData.FetchAndCachePriceAsync(ticker);
+                }
+
+                await Task.Delay(8000, cts.Token);
+            }
+
             Console.WriteLine($"✅ MarketDataJob concluído: {DateTime.UtcNow:HH:mm:ss}");
         }
         catch (OperationCanceledException)

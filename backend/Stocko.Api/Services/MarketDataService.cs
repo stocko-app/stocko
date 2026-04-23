@@ -187,10 +187,10 @@ public class MarketDataService
 
     public async Task FetchActiveStocksAsync(CancellationToken ct = default)
     {
-        var tickers = _db.Stocks
+        var tickers = await _db.Stocks
             .Where(s => s.Active)
             .Select(s => s.Ticker)
-            .ToList();
+            .ToListAsync(ct);
 
         foreach (var ticker in tickers)
         {

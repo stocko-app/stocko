@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Stocko.Api.Data;
@@ -155,11 +156,101 @@ public class AuthService
             return new AuthResult { Success = false, Error = "Erro ao redefinir a password." };
         }
     }
+
+    /// <summary>Valida a password actual via GoTrue e define a nova; devolve JWT fresco.</summary>
+    public async Task<AuthResult> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
+    {
+        var email = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.Email)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrEmpty(email))
+            return new AuthResult { Success = false, Error = "Utilizador não encontrado." };
+
+        var http = _httpClientFactory.CreateClient();
+        try
+        {
+            var tokenReq = new HttpRequestMessage(HttpMethod.Post, $"{_supabaseUrl}/auth/v1/token?grant_type=password")
+            {
+                Content = JsonContent.Create(new { email, password = currentPassword })
+            };
+            tokenReq.Headers.TryAddWithoutValidation("apikey", _supabaseAnonKey);
+
+            var tokenResp = await http.SendAsync(tokenReq);
+            if (!tokenResp.IsSuccessStatusCode)
+                return new AuthResult { Success = false, Error = "Password actual incorrecta." };
+
+            var tokenBody = await tokenResp.Content.ReadAsStringAsync();
+            using var tokenDoc = JsonDocument.Parse(tokenBody);
+            var accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString();
+            if (string.IsNullOrEmpty(accessToken))
+                return new AuthResult { Success = false, Error = "Erro de autenticação." };
+
+            var putReq = new HttpRequestMessage(HttpMethod.Put, $"{_supabaseUrl}/auth/v1/user")
+            {
+                Content = JsonContent.Create(new { password = newPassword })
+            };
+            putReq.Headers.TryAddWithoutValidation("apikey", _supabaseAnonKey);
+            putReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            var putResp = await http.SendAsync(putReq);
+            if (!putResp.IsSuccessStatusCode)
+            {
+                var err = await putResp.Content.ReadAsStringAsync();
+                Console.WriteLine($"ChangePassword PUT: {putResp.StatusCode} {err}");
+                return new AuthResult { Success = false, Error = "Não foi possível alterar a password." };
+            }
+
+            var loginReq = new HttpRequestMessage(HttpMethod.Post, $"{_supabaseUrl}/auth/v1/token?grant_type=password")
+            {
+                Content = JsonContent.Create(new { email, password = newPassword })
+            };
+            loginReq.Headers.TryAddWithoutValidation("apikey", _supabaseAnonKey);
+
+            var loginResp = await http.SendAsync(loginReq);
+            if (!loginResp.IsSuccessStatusCode)
+            {
+                var err = await loginResp.Content.ReadAsStringAsync();
+                Console.WriteLine($"ChangePassword login após update: {loginResp.StatusCode} {err}");
+                return new AuthResult
+                {
+                    Success = true,
+                    AccessToken = null,
+                    RefreshToken = null,
+                    UserId = userId,
+                    Error = "PASSWORD_CHANGED_RELOGIN"
+                };
+            }
+
+            var loginBody = await loginResp.Content.ReadAsStringAsync();
+            using var loginDoc = JsonDocument.Parse(loginBody);
+            var newAccess = loginDoc.RootElement.GetProperty("access_token").GetString();
+            string? newRefresh = null;
+            if (loginDoc.RootElement.TryGetProperty("refresh_token", out var rt))
+                newRefresh = rt.GetString();
+
+            return new AuthResult
+            {
+                Success = true,
+                AccessToken = newAccess,
+                RefreshToken = newRefresh,
+                UserId = userId,
+                Error = null
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ChangePasswordAsync: {ex}");
+            return new AuthResult { Success = false, Error = "Erro ao alterar a password." };
+        }
+    }
 }
 
 public class AuthResult
 {
     public bool Success { get; set; }
+    /// <summary>Erro legível, ou "PASSWORD_CHANGED_RELOGIN" quando a password mudou mas falhou renovar JWT.</summary>
     public string? Error { get; set; }
     public string? AccessToken { get; set; }
     public string? RefreshToken { get; set; }

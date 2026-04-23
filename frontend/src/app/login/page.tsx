@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart2, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
+import { PASSWORD_RULE_HINT_PT, isPasswordLongEnoughForLogin } from "@/lib/passwordPolicy";
 import { useAuth } from "@/store/auth";
 
 export default function LoginPage() {
@@ -18,6 +19,15 @@ export default function LoginPage() {
   const [checking, setChecking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [passwordChangedBanner, setPasswordChangedBanner] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("passwordChanged") === "1") {
+      setPasswordChangedBanner("Password alterada com sucesso. Entra com a nova password.");
+      router.replace("/login", { scroll: false });
+    }
+  }, [router]);
 
   async function handleIdentifier(e: React.FormEvent) {
     e.preventDefault();
@@ -74,6 +84,11 @@ export default function LoginPage() {
 
         {/* card */}
         <div className="glass rounded-2xl p-8">
+          {passwordChangedBanner && (
+            <p className="text-success text-sm bg-success/10 border border-success/20 rounded-lg px-4 py-2 mb-5">
+              {passwordChangedBanner}
+            </p>
+          )}
 
           {/* passo 1 — identificador */}
           {step === "identifier" && (
@@ -149,6 +164,7 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-slate-500 text-xs mt-1">{PASSWORD_RULE_HINT_PT}</p>
               </div>
 
               {error && (
@@ -159,7 +175,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading || !password}
+                disabled={loading || !isPasswordLongEnoughForLogin(password)}
                 className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
               >
                 {loading ? (
