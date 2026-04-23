@@ -1,5 +1,7 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Caching.Memory;
-using Stocko.Api.Data;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace Stocko.Api.Services;
@@ -8,11 +10,24 @@ public class SupabaseAuthMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<SupabaseAuthMiddleware> _logger;
 
-    public SupabaseAuthMiddleware(RequestDelegate next, IMemoryCache cache)
+    private static readonly TimeSpan GetUserTimeout = TimeSpan.FromSeconds(15);
+
+    public SupabaseAuthMiddleware(
+        RequestDelegate next,
+        IMemoryCache cache,
+        ILogger<SupabaseAuthMiddleware> logger)
     {
         _next = next;
         _cache = cache;
+        _logger = logger;
+    }
+
+    private static string CacheKeyForToken(string token)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return "auth_" + Convert.ToHexString(hash);
     }
 
     public async Task InvokeAsync(HttpContext context, Supabase.Client supabase)
@@ -24,16 +39,15 @@ public class SupabaseAuthMiddleware
         {
             try
             {
-                // Cache por 5 minutos — evita chamar Supabase em cada request
-                var cacheKey = $"auth_{token[..20]}";
+                // Cache por 5 minutos — chave = hash do JWT (evita colisões em token[..20])
+                var cacheKey = CacheKeyForToken(token);
                 if (!_cache.TryGetValue(cacheKey, out string? userId))
                 {
-                    var user = await supabase.Auth.GetUser(token);
+                    var getUserTask = supabase.Auth.GetUser(token);
+                    var user = await getUserTask.WaitAsync(GetUserTimeout, context.RequestAborted);
                     userId = user?.Id;
                     if (userId != null)
-                    {
                         _cache.Set(cacheKey, userId, TimeSpan.FromMinutes(5));
-                    }
                 }
 
                 if (userId != null)
@@ -47,9 +61,18 @@ public class SupabaseAuthMiddleware
                     context.Items["UserId"] = Guid.Parse(userId);
                 }
             }
-            catch
+            catch (TimeoutException)
             {
-                // Token inválido — continua sem autenticação
+                _logger.LogWarning("Supabase Auth.GetUser excedeu {Timeout}s — pedido continua sem UserId",
+                    GetUserTimeout.TotalSeconds);
+            }
+            catch (OperationCanceledException)
+            {
+                // Cliente cancelou o pedido — não logar como erro
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Supabase Auth.GetUser falhou (token inválido ou rede)");
             }
         }
 

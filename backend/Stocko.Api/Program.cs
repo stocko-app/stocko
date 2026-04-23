@@ -18,8 +18,10 @@ var directConnBuilder = new NpgsqlConnectionStringBuilder(directConn)
     MaxPoolSize = 8,
     MinPoolSize = 0,
     ConnectionIdleLifetime = 60,
+    ConnectionLifetime = 600, // recicla conexões (evita socket morto após idle no Supabase)
     Timeout = 15,
-    KeepAlive = 30
+    KeepAlive = 30,
+    TcpKeepAlive = true
 };
 var efConnString = directConnBuilder.ConnectionString;
 
@@ -51,8 +53,10 @@ var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(hangfireBaseConn)
     MaxPoolSize = 4,
     MinPoolSize = 0,
     ConnectionIdleLifetime = 60,
+    ConnectionLifetime = 600,
     Timeout = 15,
-    KeepAlive = 30
+    KeepAlive = 30,
+    TcpKeepAlive = true
 };
 var hangfireConnString = hangfireConnBuilder.ConnectionString;
 builder.Services.AddHangfire(config =>
@@ -134,16 +138,22 @@ app.UseMiddleware<SupabaseAuthMiddleware>();
 app.MapControllers();
 
 // Health: verifica Postgres; o Fly pode reiniciar se isto falhar repetidamente
-app.MapGet("/health", async (StockoDbContext db) =>
+app.MapGet("/health", async (StockoDbContext db, ILoggerFactory logs) =>
 {
+    var log = logs.CreateLogger("Health");
     try
     {
-        return await db.Database.CanConnectAsync()
-            ? Results.Text("OK")
-            : Results.StatusCode(503);
+        if (!await db.Database.CanConnectAsync())
+        {
+            log.LogWarning("Health: CanConnectAsync=false (pool ou Postgres indisponível)");
+            return Results.StatusCode(503);
+        }
+
+        return Results.Text("OK");
     }
-    catch
+    catch (Exception ex)
     {
+        log.LogError(ex, "Health: excepção ao verificar Postgres");
         return Results.StatusCode(503);
     }
 });
