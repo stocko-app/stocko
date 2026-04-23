@@ -117,29 +117,76 @@ public class LeaguesController : ControllerBase
         });
     }
 
-    // GET /api/leagues — listar as tuas ligas
+    // GET /api/leagues — listar as tuas ligas (ranking = semana actual da liga)
     [HttpGet]
     public async Task<IActionResult> GetMyLeagues()
     {
         var userId = HttpContext.Items["UserId"] as Guid?;
         if (userId == null) return Unauthorized("Token inválido.");
 
-        var leagues = await _db.LeagueMembers
+        var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
+
+        var baseRows = await _db.LeagueMembers
             .Where(lm => lm.UserId == userId)
             .Include(lm => lm.League)
             .Select(lm => new
             {
-                lm.League.Id,
+                LeagueId = lm.LeagueId,
+                lm.League!.Id,
                 lm.League.Name,
                 lm.League.InviteCode,
-                IsOwner = lm.League.OwnerId == userId,
                 MemberCount = _db.LeagueMembers.Count(m => m.LeagueId == lm.LeagueId),
-                lm.League.MaxMembers,
                 lm.JoinedAt
             })
             .ToListAsync();
 
-        return Ok(leagues);
+        var leagueIds = baseRows.Select(r => r.LeagueId).ToList();
+        if (leagueIds.Count == 0)
+            return Ok(Array.Empty<object>());
+
+        var memberships = await _db.LeagueMembers
+            .Where(lm => leagueIds.Contains(lm.LeagueId))
+            .Select(lm => new { lm.LeagueId, lm.UserId })
+            .ToListAsync();
+
+        var allUserIds = memberships.Select(m => m.UserId).Distinct().ToList();
+        var weekScores = await _db.WeeklyScores
+            .Where(ws => ws.GameWeekId == gameWeek.Id && allUserIds.Contains(ws.UserId))
+            .Select(ws => new { ws.UserId, ws.TotalPoints })
+            .ToListAsync();
+
+        var scoreByUser = weekScores.ToDictionary(s => s.UserId, s => s.TotalPoints);
+
+        var payload = baseRows.Select(row =>
+        {
+            var memberIds = memberships
+                .Where(m => m.LeagueId == row.LeagueId)
+                .Select(m => m.UserId)
+                .Distinct()
+                .ToList();
+
+            var ranked = memberIds
+                .Select(uid => (uid, pts: scoreByUser.TryGetValue(uid, out var p) ? p : 0m))
+                .OrderByDescending(x => x.pts)
+                .ThenBy(x => x.uid)
+                .ToList();
+
+            var idx = ranked.FindIndex(x => x.uid == userId!.Value);
+            var myPoints = idx >= 0 ? ranked[idx].pts : 0m;
+            var myRank = idx >= 0 ? idx + 1 : ranked.Count;
+
+            return new
+            {
+                row.Id,
+                row.Name,
+                row.InviteCode,
+                totalMembers = row.MemberCount,
+                myRank,
+                myPoints = Math.Round(myPoints, 2)
+            };
+        }).ToList();
+
+        return Ok(payload);
     }
 
     // GET /api/leagues/{id}/rankings — ranking de uma liga

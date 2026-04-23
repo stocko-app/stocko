@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Users, Plus, LogIn, Copy, Check, AlertCircle, Trophy, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
-import { cn } from "@/lib/cn";
+import { useAuth } from "@/store/auth";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -19,6 +19,7 @@ interface League {
 // ── componente principal ──────────────────────────────────────────────────────
 
 export default function LeaguesPage() {
+  const { token } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,8 +41,9 @@ export default function LeaguesPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
+    setLeagues([]);
     fetchLeagues();
-  }, []);
+  }, [token]);
 
   async function fetchLeagues() {
     setLoading(true);
