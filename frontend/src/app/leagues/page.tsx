@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Users, Plus, LogIn, Copy, Check, AlertCircle, Trophy, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
@@ -253,7 +254,11 @@ export default function LeaguesPage() {
           ) : (
             <div className="space-y-3">
               {leagues.map((league) => (
-                <div key={league.id} className="glass glass-hover rounded-2xl p-5">
+                <Link
+                  key={league.id}
+                  href={`/leagues/${league.id}`}
+                  className="block glass glass-hover rounded-2xl p-5 transition-all focus:outline-none focus:ring-2 focus:ring-gold-500/40"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold truncate">{league.name}</h3>
@@ -274,8 +279,14 @@ export default function LeaguesPage() {
                           {league.inviteCode}
                         </span>
                         <button
-                          onClick={() => copyCode(league.inviteCode, league.id)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            copyCode(league.inviteCode, league.id);
+                          }}
                           className="text-slate-400 hover:text-white transition-colors"
+                          aria-label="Copiar código"
                         >
                           {copiedId === league.id
                             ? <Check className="w-3.5 h-3.5 text-success" />
@@ -285,7 +296,7 @@ export default function LeaguesPage() {
                       <ChevronRight className="w-4 h-4 text-slate-500" />
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

@@ -40,7 +40,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              item.href === "/leagues"
+                ? pathname.startsWith("/leagues")
+                : pathname === item.href;
             return (
               <Link
                 key={item.href}
@@ -92,7 +95,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* bottom nav — mobile */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 bg-navy-900 border-t border-white/5 flex">
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              item.href === "/leagues"
+                ? pathname.startsWith("/leagues")
+                : pathname === item.href;
             return (
               <Link
                 key={item.href}
