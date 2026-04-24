@@ -175,10 +175,6 @@ function Hero() {
       <div className="relative w-full max-w-6xl mx-auto px-4 flex justify-center">
       <div className="max-w-4xl text-center">
         <motion.div {...fadeUp(0)}>
-          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gold-400 border border-gold-400/30 rounded-xl px-4 py-1.5 mb-6">
-            <span className="w-1.5 h-1.5 bg-gold-400 rounded-full animate-pulse" />
-            Fantasy Stock Market
-          </span>
         </motion.div>
 
         <motion.h1
@@ -224,9 +220,9 @@ function Hero() {
           className="flex items-center justify-center gap-14 md:gap-20 mt-16 text-center"
         >
           {[
-            { value: "5", label: "acções por semana" },
-            { value: "6", label: "tiers para subir" },
-            { value: "2×", label: "bónus capitão" },
+            { value: "5", label: "Acções por semana" },
+            { value: "6", label: "Tiers para subir" },
+            { value: "2×", label: "Bónus capitão" },
           ].map((s) => (
             <div key={s.label}>
               <div className="text-3xl font-extrabold text-gradient-gold">
