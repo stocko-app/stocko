@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus, ShieldCheck } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus, ShieldCheck, CalendarClock, Target } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/store/auth";
@@ -85,17 +85,22 @@ export default function DashboardPage() {
     }
   }
 
+  function formatRange(start: string, end: string) {
+    return `${new Date(start).toLocaleDateString("pt-PT", { day: "numeric", month: "short" })} – ${new Date(end).toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}`;
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="surface-card flex flex-col items-center justify-center min-h-64 gap-3">
         <div className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-slate-400">A preparar o teu dashboard...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center gap-3 text-danger bg-danger/10 border border-danger/20 rounded-xl p-4">
+      <div className="surface-card flex items-center gap-3 text-danger bg-danger/10 border border-danger/20">
         <AlertCircle className="w-5 h-5 shrink-0" />
         <span className="text-sm">{error}</span>
       </div>
@@ -105,17 +110,21 @@ export default function DashboardPage() {
   const totalPoints = data?.picks.reduce((sum, p) => sum + p.weekPoints, 0) ?? 0;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* cabeçalho */}
-      <div>
-        <h1 className="text-2xl font-extrabold">Dashboard</h1>
-        {data && (
-          <p className="text-slate-400 text-sm mt-1">
-            Semana {new Date(data.weekStart).toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}
-            {" – "}
-            {new Date(data.weekEnd).toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}
-          </p>
-        )}
+    <div className="max-w-5xl mx-auto space-y-6 pb-20 md:pb-8">
+      <div className="surface-card relative overflow-hidden">
+        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-gold-500/10 blur-3xl pointer-events-none" />
+        <div className="relative space-y-2">
+          <p className="section-title">Jogo em curso</p>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+            Bem-vindo ao teu <span className="text-gradient-gold">cockpit</span>
+          </h1>
+          {data && (
+            <p className="text-slate-300 text-sm md:text-base flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-gold-400" />
+              Semana {formatRange(data.weekStart, data.weekEnd)}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* card activação de capitão */}
@@ -204,27 +213,34 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* pontos da semana */}
-      <div className="glass rounded-2xl p-6 flex items-center justify-between">
-        <div>
-          <p className="text-slate-400 text-sm">Pontos esta semana</p>
-          <p className="text-4xl font-extrabold text-gradient-gold mt-1">
-            {totalPoints.toFixed(1)}
-          </p>
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="surface-card">
+          <p className="text-slate-400 text-xs uppercase tracking-[0.12em]">Pontos da semana</p>
+          <p className="kpi-value text-gradient-gold mt-1">{totalPoints.toFixed(1)}</p>
+          <p className="text-xs text-slate-500 mt-1">Actualização após fecho de mercado</p>
         </div>
-        <div className="text-right">
-          <p className="text-slate-400 text-sm">Picks</p>
-          <p className="text-2xl font-bold mt-1">
+        <div className="surface-card">
+          <p className="text-slate-400 text-xs uppercase tracking-[0.12em]">Picks activos</p>
+          <p className="kpi-value mt-1">
             {data?.picks.length ?? 0}
-            <span className="text-slate-500 text-base font-normal">/5</span>
+            <span className="text-slate-500 text-lg font-semibold">/5</span>
           </p>
+          <p className="text-xs text-slate-500 mt-1">{data?.deadlinePassed ? "Deadline fechado" : "Ainda podes alterar picks"}</p>
+        </div>
+        <div className="surface-card">
+          <p className="text-slate-400 text-xs uppercase tracking-[0.12em]">Estado do capitão</p>
+          <p className="kpi-value mt-1 flex items-center gap-2 text-2xl md:text-3xl">
+            <Target className="w-6 h-6 text-gold-400" />
+            {data?.picks.some((p) => p.captainActivatedDay) ? "Activo" : "Pendente"}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Só pode ser activado uma vez por semana</p>
         </div>
       </div>
 
       {/* modal de selecção de picks */}
       {showPicker && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg glass rounded-2xl p-6 space-y-4">
+          <div className="w-full max-w-2xl surface-card space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">Escolher picks</h2>
               <button onClick={() => setShowPicker(false)} className="text-slate-400 hover:text-white">
@@ -245,15 +261,15 @@ export default function DashboardPage() {
       )}
 
       {/* lista de picks */}
-      <div>
+      <div className="space-y-3">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+          <h2 className="section-title">
             Os teus picks
           </h2>
           {data && !data.deadlinePassed && (
             <button
               onClick={() => openPicker(data.picks.map((p) => ({ ticker: p.ticker, isCaptainDraft: p.isCaptainDraft })))}
-              className="flex items-center gap-1.5 text-sm font-semibold text-gold-400 hover:text-gold-300 transition-colors"
+              className="btn-ghost text-gold-300 border-gold-500/30 hover:border-gold-500/50"
             >
               <Plus className="w-4 h-4" />
               {data.picks.length === 0 ? "Escolher picks" : "Alterar picks"}
@@ -262,7 +278,7 @@ export default function DashboardPage() {
         </div>
 
         {!data?.picks.length ? (
-          <div className="glass rounded-2xl p-8 text-center text-slate-400">
+          <div className="surface-card text-center text-slate-400 border border-dashed border-white/15">
             <p className="text-lg font-semibold mb-1">Ainda sem picks</p>
             {data && !data.deadlinePassed ? (
               <p className="text-sm">Clica em <span className="text-gold-400 font-semibold">Escolher picks</span> para começar.</p>
@@ -271,13 +287,13 @@ export default function DashboardPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-2">
             {data.picks.map((pick) => {
               const positive = (pick.latestPrice?.pctChange ?? 0) >= 0;
               return (
-                <div
+                <article
                   key={pick.id}
-                  className="glass glass-hover rounded-xl p-4 flex items-center gap-4"
+                  className="surface-card glass-hover rounded-xl p-4 flex items-center gap-4"
                 >
                   {/* ticker */}
                   <div className="w-12 h-12 rounded-xl bg-navy-700 flex items-center justify-center shrink-0">
@@ -316,7 +332,7 @@ export default function DashboardPage() {
                       {pick.weekPoints.toFixed(1)} pts
                     </div>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
@@ -328,7 +344,7 @@ export default function DashboardPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              <h2 className="section-title">
                 Próxima semana
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -341,7 +357,7 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={() => openPicker(data.nextWeekDraft!.picks.map((p) => ({ ticker: p.ticker, isCaptainDraft: p.isCaptainDraft })))}
-              className="flex items-center gap-1.5 text-sm font-semibold text-gold-400 hover:text-gold-300 transition-colors"
+              className="btn-ghost text-gold-300 border-gold-500/30 hover:border-gold-500/50"
             >
               <Plus className="w-4 h-4" />
               {data.nextWeekDraft.picks.length === 0 ? "Preparar picks" : "Alterar picks"}
@@ -349,14 +365,14 @@ export default function DashboardPage() {
           </div>
 
           {data.nextWeekDraft.picks.length === 0 ? (
-            <div className="glass rounded-2xl p-6 text-center text-slate-400 border border-dashed border-white/10">
+            <div className="surface-card text-center text-slate-400 border border-dashed border-white/10">
               <p className="text-sm">Ainda sem picks para a próxima semana.</p>
               <p className="text-xs text-slate-500 mt-1">Podes preparar os teus picks já agora.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid gap-2 md:grid-cols-2">
               {data.nextWeekDraft.picks.map((pick) => (
-                <div key={pick.id} className="glass rounded-xl p-3 flex items-center gap-3 border border-white/5">
+                <div key={pick.id} className="surface-card rounded-xl p-3 flex items-center gap-3 border border-white/5">
                   <div className="w-10 h-10 rounded-lg bg-navy-700 flex items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-gold-400">{pick.ticker}</span>
                   </div>
@@ -367,7 +383,7 @@ export default function DashboardPage() {
                     </div>
                     <span className="text-xs text-slate-500">{pick.sector}</span>
                   </div>
-                  <span className="text-xs text-slate-500 bg-navy-800 px-2 py-0.5 rounded-full border border-white/5">
+                  <span className="text-xs text-slate-400 bg-navy-800 px-2 py-0.5 rounded-full border border-white/5">
                     agendado
                   </span>
                 </div>

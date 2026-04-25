@@ -83,24 +83,28 @@ export default function RankingsPage() {
   }, [tab, token]); // re-fetch quando muda de tab ou de utilizador
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* cabeçalho */}
-      <div className="flex items-center gap-3">
-        <Trophy className="w-6 h-6 text-gold-400" />
-        <h1 className="text-2xl font-extrabold">Rankings</h1>
+    <div className="max-w-5xl mx-auto space-y-6 pb-20 md:pb-8">
+      <div className="surface-card">
+        <div className="flex items-center gap-3">
+          <Trophy className="w-6 h-6 text-gold-400" />
+          <div>
+            <p className="section-title">Competicao</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold">Rankings</h1>
+          </div>
+        </div>
       </div>
 
       {/* tabs */}
-      <div className="flex gap-2 bg-navy-800 rounded-xl p-1">
+      <div className="surface-muted rounded-xl p-1.5 flex gap-2">
         {(["global", "tier"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "flex-1 py-2 rounded-lg text-sm font-semibold transition-all",
+              "flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all",
               tab === t
                 ? "bg-gold-500 text-navy-950"
-                : "text-slate-400 hover:text-white"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
             )}
           >
             {t === "global" ? "Global" : "O meu Tier"}
@@ -110,14 +114,14 @@ export default function RankingsPage() {
 
       {/* loading */}
       {loading && (
-        <div className="flex items-center justify-center h-48">
+        <div className="surface-card flex items-center justify-center h-48">
           <div className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
       {/* erro */}
       {!loading && error && (
-        <div className="flex items-center gap-3 text-danger bg-danger/10 border border-danger/20 rounded-xl p-4">
+        <div className="surface-card flex items-center gap-3 text-danger bg-danger/10 border border-danger/20">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
@@ -128,7 +132,7 @@ export default function RankingsPage() {
         <div className="space-y-4">
           {/* a minha posição */}
           {global.myRank > 0 && (
-            <div className="glass rounded-xl p-4 flex items-center justify-between border border-gold-500/20">
+            <div className="surface-card rounded-xl p-4 flex items-center justify-between border border-gold-500/20">
               <div>
                 <p className="text-xs text-slate-400 mb-0.5">A tua posição</p>
                 <p className="font-bold text-lg">
@@ -147,7 +151,7 @@ export default function RankingsPage() {
           )}
 
           {/* lista */}
-          <div className="glass rounded-2xl overflow-hidden">
+          <div className="surface-card rounded-2xl overflow-hidden p-0">
             <div className="px-5 py-3 border-b border-white/5 text-xs text-slate-500 uppercase tracking-wider">
               Top jogadores esta semana
             </div>
@@ -160,7 +164,7 @@ export default function RankingsPage() {
                 <div
                   key={row.rank}
                   className={cn(
-                    "px-5 py-3.5 flex items-center gap-4",
+                    "px-5 py-3.5 flex items-center gap-4 hover:bg-white/[0.02]",
                     i < global.rankings.length - 1 && "border-b border-white/5",
                     row.isMe && "bg-gold-500/5"
                   )}
@@ -195,7 +199,7 @@ export default function RankingsPage() {
       {!loading && !error && tab === "tier" && tier && (
         <div className="space-y-4">
           {/* info do tier */}
-          <div className="glass rounded-xl p-4 flex items-center justify-between border border-gold-500/20">
+          <div className="surface-card rounded-xl p-4 flex items-center justify-between border border-gold-500/20">
             <div>
               <p className="text-xs text-slate-400 mb-0.5">O teu tier</p>
               <p className="font-bold text-lg">{tierLabels[tier.tier] ?? tier.tier}</p>
@@ -221,7 +225,7 @@ export default function RankingsPage() {
           </div>
 
           {/* lista */}
-          <div className="glass rounded-2xl overflow-hidden">
+          <div className="surface-card rounded-2xl overflow-hidden p-0">
             {tier.rankings.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-sm">
                 Ainda sem pontuações esta semana.

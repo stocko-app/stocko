@@ -79,7 +79,7 @@ function StatCard({ icon: Icon, label, value, sub }: {
   sub?: string;
 }) {
   return (
-    <div className="glass rounded-xl p-4">
+    <div className="surface-card rounded-xl p-4">
       <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
         <Icon className="w-3.5 h-3.5" />
         {label}
@@ -169,7 +169,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="surface-card flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -177,7 +177,7 @@ export default function ProfilePage() {
 
   if (error) {
     return (
-      <div className="flex items-center gap-3 text-danger bg-danger/10 border border-danger/20 rounded-xl p-4">
+      <div className="surface-card flex items-center gap-3 text-danger bg-danger/10 border border-danger/20">
         <AlertCircle className="w-5 h-5 shrink-0" />
         <span className="text-sm">{error}</span>
       </div>
@@ -187,15 +187,18 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-20 md:pb-8">
       {/* cabeçalho */}
-      <div className="flex items-center gap-3">
+      <div className="surface-card flex items-center gap-3">
         <User className="w-6 h-6 text-gold-400" />
-        <h1 className="text-2xl font-extrabold">Perfil</h1>
+        <div>
+          <p className="section-title">Conta</p>
+          <h1 className="text-2xl font-extrabold">Perfil</h1>
+        </div>
       </div>
 
       {/* card principal */}
-      <div className="glass rounded-2xl p-6">
+      <div className="surface-card">
         <div className="flex items-start gap-4">
           {/* avatar */}
           <div className="w-14 h-14 rounded-2xl bg-gold-500/20 flex items-center justify-center text-2xl font-bold text-gold-400 shrink-0">
@@ -223,7 +226,7 @@ export default function ProfilePage() {
       </div>
 
       {/* alterar password */}
-      <div className="glass rounded-2xl overflow-hidden">
+      <div className="surface-card rounded-2xl overflow-hidden p-0">
         <button
           type="button"
           onClick={() => {
@@ -252,7 +255,7 @@ export default function ProfilePage() {
                   value={currentPwd}
                   onChange={(e) => { setCurrentPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
                   autoComplete="current-password"
-                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
                   placeholder="••••••••"
                 />
                 <button
@@ -274,7 +277,7 @@ export default function ProfilePage() {
                   value={newPwd}
                   onChange={(e) => { setNewPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
                   autoComplete="new-password"
-                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
                   placeholder="nova password"
                 />
                 <button
@@ -296,7 +299,7 @@ export default function ProfilePage() {
                   value={confirmPwd}
                   onChange={(e) => { setConfirmPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
                   autoComplete="new-password"
-                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
                   placeholder="repete a nova password"
                 />
                 <button
@@ -326,7 +329,7 @@ export default function ProfilePage() {
                 !confirmPwd ||
                 !!validateNewPassword(newPwd)
               }
-              className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {pwdLoading ? (
                 <>
@@ -380,7 +383,7 @@ export default function ProfilePage() {
         </h2>
 
         {achievements.length === 0 ? (
-          <div className="glass rounded-2xl p-8 text-center text-slate-500 text-sm">
+          <div className="surface-card p-8 text-center text-slate-500 text-sm">
             Ainda sem conquistas — joga mais semanas para as desbloquear!
           </div>
         ) : (
@@ -388,7 +391,7 @@ export default function ProfilePage() {
             {achievements.map((a, i) => {
               const info = achievementLabels[a.type] ?? { icon: "🏅", label: a.type };
               return (
-                <div key={i} className="glass glass-hover rounded-xl p-4 flex items-center gap-3">
+                <div key={i} className="surface-card glass-hover rounded-xl p-4 flex items-center gap-3">
                   <span className="text-2xl shrink-0">{info.icon}</span>
                   <div className="min-w-0">
                     <div className="text-sm font-semibold truncate">{info.label}</div>

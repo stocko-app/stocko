@@ -24,9 +24,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-transparent">
       {/* sidebar — desktop */}
-      <aside className="hidden md:flex flex-col w-60 bg-navy-900 border-r border-white/5 fixed inset-y-0 left-0">
+      <aside className="hidden md:flex flex-col w-64 bg-navy-900/85 backdrop-blur border-r border-white/10 fixed inset-y-0 left-0">
         {/* logo */}
         <div className="px-6 h-16 flex items-center border-b border-white/5">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -51,8 +51,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                   active
-                    ? "bg-gold-500/15 text-gold-400"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    ? "bg-gold-500/15 text-gold-300 border border-gold-500/30"
+                    : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
                 )}
               >
                 <item.icon className="w-4 h-4" />
@@ -78,9 +78,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* conteúdo principal */}
-      <main className="flex-1 md:ml-60 min-h-screen">
+      <main className="flex-1 md:ml-64 min-h-screen">
         {/* topbar mobile */}
-        <header className="md:hidden h-14 bg-navy-900 border-b border-white/5 flex items-center justify-between px-4">
+        <header className="md:hidden h-14 bg-navy-900/90 backdrop-blur border-b border-white/10 flex items-center justify-between px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
             <BarChart2 className="w-5 h-5 text-gold-400" />
             <span className="font-bold tracking-tight">
@@ -90,10 +90,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="text-xs text-slate-500">@{username}</span>
         </header>
 
-        <div className="p-6">{children}</div>
+        <div className="p-4 md:p-6 lg:p-8">{children}</div>
 
         {/* bottom nav — mobile */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 bg-navy-900 border-t border-white/5 flex">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 bg-navy-900/95 backdrop-blur border-t border-white/10 flex">
           {navItems.map((item) => {
             const active =
               item.href === "/leagues"

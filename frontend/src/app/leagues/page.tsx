@@ -100,24 +100,27 @@ export default function LeaguesPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-20 md:pb-8">
       {/* cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="w-6 h-6 text-gold-400" />
-          <h1 className="text-2xl font-extrabold">Ligas</h1>
+      <div className="surface-card flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Users className="w-6 h-6 text-gold-400 shrink-0" />
+          <div>
+            <p className="section-title">Social</p>
+            <h1 className="text-2xl font-extrabold">Ligas</h1>
+          </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => { setShowJoin(true); setShowCreate(false); }}
-            className="flex items-center gap-1.5 text-sm border border-white/10 hover:border-white/20 text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-all"
+            className="btn-ghost"
           >
             <LogIn className="w-4 h-4" />
             Entrar
           </button>
           <button
             onClick={() => { setShowCreate(true); setShowJoin(false); setCreatedCode(""); setCreateName(""); setCreateError(""); }}
-            className="flex items-center gap-1.5 text-sm bg-gold-500 hover:bg-gold-400 text-navy-950 font-semibold px-3 py-2 rounded-xl transition-all"
+            className="btn-primary"
           >
             <Plus className="w-4 h-4" />
             Criar
@@ -127,7 +130,7 @@ export default function LeaguesPage() {
 
       {/* form criar */}
       {showCreate && (
-        <div className="glass rounded-2xl p-5 border border-gold-500/20">
+        <div className="surface-card border border-gold-500/20">
           {!createdCode ? (
             <>
               <h2 className="font-bold mb-4">Nova liga</h2>
@@ -138,7 +141,7 @@ export default function LeaguesPage() {
                   onChange={(e) => setCreateName(e.target.value)}
                   placeholder="Nome da liga"
                   required
-                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 transition-all"
+                  className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 transition-all"
                 />
                 {createError && (
                   <p className="text-danger text-sm">{createError}</p>
@@ -147,14 +150,14 @@ export default function LeaguesPage() {
                   <button
                     type="button"
                     onClick={() => setShowCreate(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm text-slate-400 hover:text-white transition-all"
+                    className="btn-ghost flex-1"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={createLoading}
-                    className="flex-1 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-semibold text-sm transition-all disabled:opacity-50"
+                    className="btn-primary flex-1"
                   >
                     {createLoading ? "A criar..." : "Criar liga"}
                   </button>
@@ -166,7 +169,7 @@ export default function LeaguesPage() {
               <div className="text-3xl">🎉</div>
               <p className="font-bold">Liga criada!</p>
               <p className="text-sm text-slate-400">Partilha este código com os teus amigos:</p>
-              <div className="flex items-center justify-center gap-3 bg-navy-800 rounded-xl px-5 py-3">
+              <div className="flex items-center justify-center gap-3 bg-navy-900/80 rounded-xl px-5 py-3 border border-white/10">
                 <span className="font-mono font-bold text-xl text-gold-400 tracking-widest">
                   {createdCode}
                 </span>
@@ -190,7 +193,7 @@ export default function LeaguesPage() {
 
       {/* form entrar */}
       {showJoin && (
-        <div className="glass rounded-2xl p-5 border border-white/10">
+        <div className="surface-card border border-white/10">
           <h2 className="font-bold mb-4">Entrar numa liga</h2>
           <form onSubmit={handleJoin} className="space-y-3">
             <input
@@ -200,7 +203,7 @@ export default function LeaguesPage() {
               placeholder="Código de convite (ex: AB12CD34)"
               required
               maxLength={8}
-              className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 font-mono tracking-widest focus:outline-none focus:border-gold-500/50 transition-all"
+              className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 font-mono tracking-widest focus:outline-none focus:border-gold-500/50 transition-all"
             />
             {joinError && (
               <p className="text-danger text-sm">{joinError}</p>
@@ -209,14 +212,14 @@ export default function LeaguesPage() {
               <button
                 type="button"
                 onClick={() => setShowJoin(false)}
-                className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm text-slate-400 hover:text-white transition-all"
+                className="btn-ghost flex-1"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={joinLoading}
-                className="flex-1 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-semibold text-sm transition-all disabled:opacity-50"
+                className="btn-primary flex-1"
               >
                 {joinLoading ? "A entrar..." : "Entrar"}
               </button>
@@ -227,14 +230,14 @@ export default function LeaguesPage() {
 
       {/* loading */}
       {loading && (
-        <div className="flex items-center justify-center h-48">
+        <div className="surface-card flex items-center justify-center h-48">
           <div className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
       {/* erro */}
       {!loading && error && (
-        <div className="flex items-center gap-3 text-danger bg-danger/10 border border-danger/20 rounded-xl p-4">
+        <div className="surface-card flex items-center gap-3 text-danger bg-danger/10 border border-danger/20">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
@@ -244,7 +247,7 @@ export default function LeaguesPage() {
       {!loading && !error && (
         <>
           {leagues.length === 0 ? (
-            <div className="glass rounded-2xl p-10 text-center space-y-3">
+            <div className="surface-card p-10 text-center space-y-3">
               <Users className="w-10 h-10 text-slate-600 mx-auto" />
               <p className="font-semibold text-slate-300">Ainda não tens ligas</p>
               <p className="text-sm text-slate-500">
@@ -252,12 +255,12 @@ export default function LeaguesPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-3">
               {leagues.map((league) => (
                 <Link
                   key={league.id}
                   href={`/leagues/${league.id}`}
-                  className="block glass glass-hover rounded-2xl p-5 transition-all focus:outline-none focus:ring-2 focus:ring-gold-500/40"
+                  className="block surface-card glass-hover rounded-2xl p-5 transition-all focus:outline-none focus:ring-2 focus:ring-gold-500/40"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">

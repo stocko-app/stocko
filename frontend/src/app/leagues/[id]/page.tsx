@@ -53,8 +53,8 @@ export default function LeagueDetailPage() {
   }, [id, token]);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="max-w-4xl mx-auto space-y-6 pb-20 md:pb-8">
+      <div className="surface-card flex items-center gap-3">
         <Link
           href="/leagues"
           className="p-2 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all"
@@ -77,13 +77,13 @@ export default function LeagueDetailPage() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center h-48">
+        <div className="surface-card flex items-center justify-center h-48">
           <div className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
       {!loading && error && (
-        <div className="flex items-center gap-3 text-danger bg-danger/10 border border-danger/20 rounded-xl p-4">
+        <div className="surface-card flex items-center gap-3 text-danger bg-danger/10 border border-danger/20">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
@@ -91,7 +91,7 @@ export default function LeagueDetailPage() {
 
       {!loading && !error && data && (
         <>
-          <div className="glass rounded-2xl p-5 text-sm text-slate-400">
+          <div className="surface-card text-sm text-slate-400">
             <span className="text-slate-300 font-medium">Semana: </span>
             {new Date(data.gameWeek.weekStart).toLocaleDateString("pt-PT", {
               day: "numeric",
@@ -105,7 +105,7 @@ export default function LeagueDetailPage() {
             })}
           </div>
 
-          <div className="glass rounded-2xl overflow-hidden">
+          <div className="surface-card rounded-2xl overflow-hidden p-0">
             <div className="px-4 py-3 border-b border-white/5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Pontuação na liga (esta semana)
             </div>

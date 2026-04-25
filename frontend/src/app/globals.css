@@ -5,6 +5,15 @@
 @layer base {
   :root {
     --font-inter: "Inter", system-ui, sans-serif;
+    --bg-primary: #050a18;
+    --bg-secondary: #090f24;
+    --surface: rgba(13, 21, 48, 0.68);
+    --surface-strong: rgba(13, 21, 48, 0.86);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-accent: rgba(240, 180, 41, 0.35);
+    --text-primary: #e2e8f0;
+    --text-muted: #94a3b8;
+    --shadow-card: 0 14px 40px rgba(5, 10, 24, 0.45);
   }
 
   * {
@@ -16,8 +25,11 @@
   }
 
   body {
-    background-color: #050a18;
-    color: #e2e8f0;
+    background:
+      radial-gradient(1200px 620px at 8% -15%, rgba(240, 180, 41, 0.11), transparent 55%),
+      radial-gradient(1000px 560px at 90% -25%, rgba(59, 130, 246, 0.12), transparent 50%),
+      var(--bg-primary);
+    color: var(--text-primary);
     font-family: var(--font-inter);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -54,9 +66,10 @@
   }
 
   .glass {
-    background: rgba(13, 21, 48, 0.6);
+    background: var(--surface);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(240, 180, 41, 0.1);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
   }
 
   .glass-hover {
@@ -69,5 +82,50 @@
 
   .glow-gold {
     box-shadow: 0 0 30px rgba(240, 180, 41, 0.2);
+  }
+
+  .surface-card {
+    @apply glass rounded-2xl p-5 md:p-6;
+  }
+
+  .surface-muted {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold;
+    background: linear-gradient(135deg, #f8ca4f, #f0b429);
+    color: #101828;
+    transition: transform 0.15s ease, filter 0.15s ease;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    background: rgba(10, 16, 34, 0.6);
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .btn-ghost:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(10, 16, 34, 0.95);
+  }
+
+  .kpi-value {
+    @apply text-3xl md:text-4xl font-extrabold tracking-tight;
+  }
+
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-slate-400;
   }
 }
