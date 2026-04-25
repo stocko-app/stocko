@@ -137,19 +137,33 @@ app.UseHttpsRedirection();
 app.UseMiddleware<SupabaseAuthMiddleware>();
 app.MapControllers();
 
-// Health: verifica Postgres; o Fly pode reiniciar se isto falhar repetidamente
-app.MapGet("/health", async (StockoDbContext db, ILoggerFactory logs) =>
+// Liveness — sem Postgres: os checks HTTP da Fly vinham esgotar o pool (vários CanConnect em paralelo).
+app.MapGet("/health/live", () => Results.Text("OK"));
+
+// Readiness — Postgres com limite de tempo; usar para diagnóstico manual ou monitor externo
+app.MapGet("/health", async (HttpContext ctx, IServiceScopeFactory scopes, ILoggerFactory logs) =>
 {
     var log = logs.CreateLogger("Health");
     try
     {
-        if (!await db.Database.CanConnectAsync())
+        await using var scope = scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
+        cts.CancelAfter(TimeSpan.FromSeconds(4));
+
+        if (!await db.Database.CanConnectAsync(cts.Token))
         {
-            log.LogWarning("Health: CanConnectAsync=false (pool ou Postgres indisponível)");
+            log.LogWarning("Health: CanConnectAsync=false");
             return Results.StatusCode(503);
         }
 
         return Results.Text("OK");
+    }
+    catch (OperationCanceledException)
+    {
+        log.LogWarning("Health: verificação à BD cancelada por timeout (4s) ou cliente desligou");
+        return Results.StatusCode(503);
     }
     catch (Exception ex)
     {

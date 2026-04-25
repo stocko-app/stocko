@@ -11,12 +11,13 @@ primary_region = 'ams'
   min_machines_running = 1
   processes = ['app']
 
+  # /health/live não abre Postgres — evita competir com API/Hangfire pelo pool de conexões
   [[http_service.checks]]
     interval = "30s"
     timeout = "5s"
     grace_period = "15s"
     method = "GET"
-    path = "/health"
+    path = "/health/live"
 
 [[vm]]
   memory = '256mb'

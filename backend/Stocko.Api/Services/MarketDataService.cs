@@ -29,18 +29,19 @@ public class MarketDataService
             Console.WriteLine($"🔄 TwelveData: {ticker}");
             var url = $"https://api.twelvedata.com/quote?symbol={ticker}&apikey={_twelveDataKey}";
             var response = await _http.GetStringAsync(url);
-            var json = JsonDocument.Parse(response);
+            using var json = JsonDocument.Parse(response);
+            var root = json.RootElement;
 
-            if (json.RootElement.TryGetProperty("status", out var status) &&
+            if (root.TryGetProperty("status", out var status) &&
                 status.GetString() == "error")
             {
-                Console.WriteLine($"❌ TwelveData erro: {json.RootElement.GetProperty("message").GetString()}");
+                Console.WriteLine($"❌ TwelveData erro: {root.GetProperty("message").GetString()}");
                 return null;
             }
 
-            var close = json.RootElement.GetProperty("close").GetString();
-            var open = json.RootElement.GetProperty("open").GetString();
-            var dateStr = json.RootElement.GetProperty("datetime").GetString();
+            var close = root.GetProperty("close").GetString();
+            var open = root.GetProperty("open").GetString();
+            var dateStr = root.GetProperty("datetime").GetString();
 
             if (!decimal.TryParse(close, System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture, out var closePrice)) return null;
@@ -75,10 +76,11 @@ public class MarketDataService
             Console.WriteLine($"🔄 Finnhub: {ticker}");
             var url = $"https://finnhub.io/api/v1/quote?symbol={ticker}&token={_finnhubKey}";
             var response = await _http.GetStringAsync(url);
-            var json = JsonDocument.Parse(response);
+            using var json = JsonDocument.Parse(response);
+            var root = json.RootElement;
 
-            var current = json.RootElement.GetProperty("c").GetDecimal();
-            var open = json.RootElement.GetProperty("o").GetDecimal();
+            var current = root.GetProperty("c").GetDecimal();
+            var open = root.GetProperty("o").GetDecimal();
 
             if (current == 0) return null;
 
@@ -109,9 +111,10 @@ public class MarketDataService
             Console.WriteLine($"🔄 AlphaVantage: {ticker}");
             var url = $"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={_alphaVantageKey}";
             var response = await _http.GetStringAsync(url);
-            var json = JsonDocument.Parse(response);
+            using var json = JsonDocument.Parse(response);
+            var root = json.RootElement;
 
-            if (!json.RootElement.TryGetProperty("Global Quote", out var quote)) return null;
+            if (!root.TryGetProperty("Global Quote", out var quote)) return null;
 
             var price = quote.GetProperty("05. price").GetString();
             var prev = quote.GetProperty("08. previous close").GetString();

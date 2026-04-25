@@ -154,6 +154,15 @@ public class ScoringService
             .Where(ds => ds.UserId != Guid.Empty && pickIds.Contains(ds.PickId))
             .ToListAsync();
 
+        var allStockIdsForWeekIndex = userPicks
+            .SelectMany(g => g.Select(p => p.StockId))
+            .Distinct()
+            .ToList();
+        var allWeekPricesForIndexBonus = await _db.StockPrices
+            .Where(sp => allStockIdsForWeekIndex.Contains(sp.StockId) &&
+                         sp.Date >= gameWeek.WeekStart && sp.Date <= date)
+            .ToListAsync();
+
         foreach (var userGroup in userPicks)
         {
             var userId = userGroup.Key;
@@ -164,10 +173,9 @@ public class ScoringService
 
             var userPickStockIds = userGroup.Select(p => p.StockId).ToList();
 
-            var weekPrices = await _db.StockPrices
-                .Where(sp => userPickStockIds.Contains(sp.StockId) &&
-                             sp.Date >= gameWeek.WeekStart && sp.Date <= date)
-                .ToListAsync();
+            var weekPrices = allWeekPricesForIndexBonus
+                .Where(sp => userPickStockIds.Contains(sp.StockId))
+                .ToList();
 
             var datesWithPrices = weekPrices.Select(sp => sp.Date).Distinct().ToList();
 
@@ -258,17 +266,35 @@ public class ScoringService
     // Actualizar streaks no fim de semana (chamar apenas na Sexta)
     public async Task UpdateStreaksAsync(Guid gameWeekId)
     {
-        var allUsers = await _db.Users.ToListAsync();
-
-        // Carregar todos os picks da semana de uma vez para evitar N queries
         var allPicks = await _db.Picks
             .Where(p => p.GameWeekId == gameWeekId)
             .ToListAsync();
 
-        foreach (var user in allUsers)
+        var picksByUser = allPicks
+            .GroupBy(p => p.UserId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var userIdsWithPicks = picksByUser.Keys.ToList();
+
+        await _db.Users
+            .Where(u => !userIdsWithPicks.Contains(u.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.StreakWeeks, 0));
+
+        if (userIdsWithPicks.Count == 0)
         {
-            var hasManualPicks = allPicks.Any(p => p.UserId == user.Id && !p.IsAuto);
-            var hasAutoPicks = allPicks.Any(p => p.UserId == user.Id && p.IsAuto);
+            Console.WriteLine("✅ Streaks: nenhum pick na semana — restantes repostos a 0");
+            return;
+        }
+
+        var usersWithPicks = await _db.Users
+            .Where(u => userIdsWithPicks.Contains(u.Id))
+            .ToListAsync();
+
+        foreach (var user in usersWithPicks)
+        {
+            var picks = picksByUser[user.Id];
+            var hasManualPicks = picks.Any(p => !p.IsAuto);
+            var hasAutoPicks = picks.Any(p => p.IsAuto);
 
             if (hasManualPicks)
             {
@@ -283,6 +309,6 @@ public class ScoringService
         }
 
         await _db.SaveChangesAsync();
-        Console.WriteLine($"✅ Streaks actualizados para {allUsers.Count} utilizadores");
+        Console.WriteLine($"✅ Streaks: {usersWithPicks.Count} com picks na semana; restantes repostos a 0 em bulk");
     }
 }
