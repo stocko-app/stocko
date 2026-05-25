@@ -1,543 +1,265 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
-import { Syne } from "next/font/google";
 import { motion } from "framer-motion";
 import {
-  TrendingUp,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart2,
+  ChevronRight,
+  Crown,
+  Flame,
+  Radar,
+  Shield,
+  Sparkles,
+  Star,
   Trophy,
   Users,
   Zap,
-  Shield,
-  Star,
-  ChevronRight,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
+import { cn } from "@/lib/cn";
 
-const syne = Syne({
-  subsets: ["latin"],
-  weight: ["700"],
-});
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-const fadeUp = (delay = 0) => ({
+const fade = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true },
-  transition: { duration: 0.55, delay, ease: "easeOut" },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.65, delay, ease: "easeOut" },
 });
 
-// ── dados mock para preview ───────────────────────────────────────────────────
-
-const mockStocks = [
-  { ticker: "AAPL", name: "Apple Inc.", change: +2.34, positive: true },
-  { ticker: "TSLA", name: "Tesla Inc.", change: -1.12, positive: false },
-  { ticker: "NVDA", name: "NVIDIA Corp.", change: +4.67, positive: true },
-  { ticker: "MSFT", name: "Microsoft", change: +0.89, positive: true },
-  { ticker: "AMZN", name: "Amazon", change: -0.43, positive: false },
+const picks = [
+  { ticker: "NVDA", name: "NVIDIA", change: 4.67, pts: 20.7, up: true, captain: true },
+  { ticker: "AAPL", name: "Apple", change: 2.34, pts: 18.3, up: true },
+  { ticker: "TSLA", name: "Tesla", change: -1.12, pts: 13.9, up: false },
+  { ticker: "EDPR.LS", name: "EDP Renováveis", change: 1.41, pts: 17.4, up: true },
+  { ticker: "BTC", name: "Bitcoin", change: 0.88, pts: 16.9, up: true },
 ];
 
-const mockRankings = [
-  { rank: 1, name: "brunosilva", points: 147.5, tier: "Elite 👑" },
-  { rank: 2, name: "pedro_trade", points: 139.2, tier: "Diamante 💠" },
-  { rank: 3, name: "market_guru", points: 131.8, tier: "Diamante 💠" },
-  { rank: 4, name: "stonks_pt", points: 128.4, tier: "Platina 💎" },
-  { rank: 5, name: "wall_st_pt", points: 122.1, tier: "Platina 💎" },
+const ranking = [
+  ["01", "alpha_wolf", "Elite", 147.5],
+  ["02", "market_guru", "Diamond", 139.2],
+  ["03", "bruno", "Gold", 128.8],
+  ["04", "risk_on", "Gold", 122.1],
 ];
 
-const features = [
-  {
-    icon: TrendingUp,
-    title: "5 Picks por Semana",
-    desc: "Escolhe até 5 acções reais antes do deadline de segunda-feira. Acumula pontos com base no desempenho real do mercado.",
-  },
-  {
-    icon: Star,
-    title: "Capitão Diário",
-    desc: "Activa o teu capitão num dia da semana para duplicar os pontos dessa acção. A decisão certa pode virar o jogo.",
-  },
-  {
-    icon: Trophy,
-    title: "Tiers & Promoções",
-    desc: "Começas em Bronze. Os top 20% sobem de tier todos os meses. Chega ao Elite e prova que és melhor que o mercado.",
-  },
-  {
-    icon: Zap,
-    title: "Streak de Semanas",
-    desc: "Joga sem falhar semanas consecutivas e mantém o teu streak. Auto-pick protege-te se te esqueceres.",
-  },
-  {
-    icon: Users,
-    title: "Ligas Privadas",
-    desc: "Cria uma liga com amigos, compara rankings semanais e vê quem é o melhor investidor do grupo.",
-  },
-  {
-    icon: Shield,
-    title: "Dados Reais",
-    desc: "Preços actualizados diariamente com dados reais de mercado. Sem simulações — é a bolsa a sério.",
-  },
-];
-
-const tiers = [
-  { name: "Bronze", icon: "🥉", color: "from-amber-700 to-amber-600", users: "Todos" },
-  { name: "Prata",  icon: "🥈", color: "from-slate-400 to-slate-300", users: "200+ utilizadores" },
-  { name: "Ouro",   icon: "🥇", color: "from-yellow-500 to-yellow-400", users: "Sempre activo" },
-  { name: "Platina",icon: "💎", color: "from-cyan-500 to-cyan-400", users: "500+ utilizadores" },
-  { name: "Diamante",icon: "💠", color: "from-blue-500 to-blue-400", users: "1000+ utilizadores" },
-  { name: "Elite",  icon: "👑", color: "from-gold-600 to-gold-400", users: "Top absoluto" },
-];
-
-// ── componentes ───────────────────────────────────────────────────────────────
-
-function Navbar() {
+function Nav() {
   return (
-    <header className="fixed top-0 inset-x-0 z-50 glass border-b border-white/5">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center">
-          <span className="font-semibold text-[1.12rem] tracking-[-0.02em] text-slate-100">
-            Sto<span className="text-gradient-gold">cko</span>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-electric/10 bg-navy-950/75 backdrop-blur-2xl">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 py-4">
+        <Link href="/" className="flex items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl border border-electric/25 bg-electric/10">
+            <BarChart2 className="h-5 w-5 text-electric" />
+          </span>
+          <span>
+            <span className="block text-xl font-black tracking-tight text-white">
+              Sto<span className="text-gradient-gold">cko</span>
+            </span>
+            <span className="text-[0.62rem] font-black uppercase tracking-[0.2em] text-slate-500">Fantasy investing</span>
           </span>
         </Link>
-
-        <nav className="hidden md:flex items-center gap-6 text-sm text-slate-400">
-          <a href="#como-funciona" className="hover:text-white transition-colors">
-            Como funciona
-          </a>
-          <a href="#tiers" className="hover:text-white transition-colors">
-            Tiers
-          </a>
-          <a href="#rankings" className="hover:text-white transition-colors">
-            Rankings
-          </a>
+        <nav className="hidden items-center gap-7 text-sm font-bold text-slate-400 md:flex">
+          <a href="#arena" className="hover:text-white">Arena</a>
+          <a href="#draft" className="hover:text-white">Draft</a>
+          <a href="#tiers" className="hover:text-white">Tiers</a>
+          <a href="#social" className="hover:text-white">Ligas</a>
         </nav>
-
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-sm text-slate-300 hover:text-white transition-colors"
-          >
-            Entrar
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm bg-gold-500 hover:bg-gold-400 text-navy-950 font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            Começar grátis
-          </Link>
+          <Link href="/login" className="text-sm font-bold text-slate-300 hover:text-white">Entrar</Link>
+          <Link href="/register" className="btn-primary rounded-2xl px-5 py-3 font-black">Jogar grátis</Link>
         </div>
       </div>
     </header>
   );
 }
 
-function TickerBar() {
-  const items = [...mockStocks, ...mockStocks];
+function HeroMockup() {
   return (
-    <div className="overflow-hidden border-b border-white/5 bg-navy-900/50">
-      <div className="flex animate-ticker whitespace-nowrap py-2">
-        {items.map((s, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1.5 px-6 text-sm"
-          >
-            <span className="font-mono font-semibold text-slate-200">
-              {s.ticker}
-            </span>
-            <span
-              className={
-                s.positive ? "text-success flex items-center" : "text-danger flex items-center"
-              }
-            >
-              {s.positive ? (
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              ) : (
-                <ArrowDownRight className="w-3.5 h-3.5" />
-              )}
-              {Math.abs(s.change).toFixed(2)}%
-            </span>
-            <span className="text-slate-600">·</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Hero() {
-  return (
-    <section className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden">
-      {/* fundo com glow */}
-      <div className="absolute inset-0 bg-hero-glow pointer-events-none" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gold-500/5 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative w-full max-w-6xl mx-auto px-4 flex justify-center">
-      <div className="max-w-4xl text-center">
-        <motion.div {...fadeUp(0)}>
-        </motion.div>
-
-        <motion.h1
-          {...fadeUp(0.1)}
-          className="text-5xl md:text-7xl font-extrabold leading-[1.08] tracking-tight mb-6"
-        >
-          Joga com a{" "}
-          <span className="text-gradient-gold">bolsa real.</span>
-        </motion.h1>
-
-        <motion.p
-          {...fadeUp(0.2)}
-          className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-[1.85]"
-          style={{ lineHeight: 1.8 }}
-        >
-          Escolhe 5 acções reais todas as semanas, activa o teu capitão no
-          momento certo e sobe até ao tier Elite. O jogo de bolsa mais viciante
-          de Portugal.
-        </motion.p>
-
-        <motion.div
-          {...fadeUp(0.3)}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
-        >
-          <Link
-            href="/register"
-            className="group inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-950 font-bold px-8 py-4 rounded-xl text-base transition-all duration-200 shadow-lg shadow-gold-500/20 hover:shadow-gold-400/30 hover:scale-[1.02]"
-          >
-            Começar grátis
-            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-          <a
-            href="#como-funciona"
-            className="inline-flex items-center gap-2 text-slate-300 hover:text-white border border-white/10 hover:border-white/20 px-8 py-4 rounded-xl text-base transition-all duration-200"
-          >
-            Como funciona
-          </a>
-        </motion.div>
-
-        {/* stats */}
-        <motion.div
-          {...fadeUp(0.4)}
-          className="flex items-center justify-center gap-14 md:gap-20 mt-16 text-center"
-        >
-          {[
-            { value: "5", label: "Acções por semana" },
-            { value: "6", label: "Tiers para subir" },
-            { value: "2×", label: "Bónus capitão" },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-3xl font-extrabold text-gradient-gold">
-                {s.value}
-              </div>
-              <div className="text-sm text-slate-500 mt-0.5">{s.label}</div>
+    <motion.div {...fade(0.25)} className="relative mx-auto w-full max-w-[560px]">
+      <div className="absolute -inset-8 rounded-[3rem] bg-electric/10 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-navy-900/80 p-4 shadow-2xl">
+        <div className="rounded-[2rem] border border-electric/10 bg-black/25 p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-electric">Live week</p>
+              <p className="mt-2 font-mono text-6xl font-black leading-none text-gradient-score">86.4</p>
+              <p className="mt-1 text-sm font-bold text-slate-400">#47 · +12 hoje</p>
             </div>
-          ))}
-        </motion.div>
-      </div>
-      </div>
-    </section>
-  );
-}
-
-function HowItWorks() {
-  const steps = [
-    {
-      n: "01",
-      title: "Regista-te",
-      desc: "Cria conta em segundos. De graça, sem cartão de crédito.",
-    },
-    {
-      n: "02",
-      title: "Escolhe os teus picks",
-      desc: "Todas as semanas tens até segunda-feira para escolher 5 acções do mercado real.",
-    },
-    {
-      n: "03",
-      title: "Activa o capitão",
-      desc: "Num dia da semana activa o capitão para duplicar os pontos de uma acção.",
-    },
-    {
-      n: "04",
-      title: "Sobe de tier",
-      desc: "No fim do mês, os top 20% de cada tier sobem. Chega ao Elite.",
-    },
-  ];
-
-  return (
-    <section id="como-funciona" className="py-28 md:py-32 px-4">
-      <div className="max-w-6xl mx-auto">
-        <motion.div {...fadeUp()} className="text-center mb-20">
-          <h2 className="text-3xl md:text-5xl font-extrabold mb-4">
-            Como funciona
-          </h2>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto">
-            Em 4 passos simples passas de principiante a especialista de mercado.
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {steps.map((step, i) => (
-            <motion.div key={step.n} {...fadeUp(i * 0.1)}>
-              <div className="glass glass-hover rounded-2xl p-6 h-full">
-                <div className="text-5xl font-extrabold text-gradient-gold mb-4 font-mono">
-                  {step.n}
-                </div>
-                <h3
-                  className="text-lg font-bold mb-2"
-                  style={{ fontFamily: "var(--font-inter)", fontWeight: 700 }}
-                >
-                  {step.title}
-                </h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  {step.desc}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Features() {
-  return (
-    <section className="py-28 md:py-32 px-4 bg-navy-900/40">
-      <div className="max-w-6xl mx-auto">
-        <motion.div {...fadeUp()} className="text-center mb-20">
-          <h2 className="text-3xl md:text-5xl font-extrabold mb-4">
-            Tudo o que precisas
-          </h2>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto">
-            Mecânicas pensadas para ser justo, competitivo e viciante.
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, i) => (
-            <motion.div key={f.title} {...fadeUp(i * 0.08)}>
-              <div className="glass glass-hover rounded-2xl p-6 h-full">
-                <div className="w-10 h-10 rounded-xl bg-gold-500/15 flex items-center justify-center mb-4">
-                  <f.icon className="w-5 h-5 text-gold-400" />
-                </div>
-                <h3 className="font-bold text-base mb-2">{f.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  {f.desc}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Tiers() {
-  return (
-    <section id="tiers" className="py-28 md:py-32 px-4">
-      <div className="max-w-6xl mx-auto">
-        <motion.div {...fadeUp()} className="text-center mb-20">
-          <h2 className="text-3xl md:text-5xl font-extrabold mb-4">
-            6 Tiers para conquistar
-          </h2>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto">
-            A competição escalona com o número de jogadores. Começa em Bronze e
-            chega ao topo.
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {tiers.map((tier, i) => (
-            <motion.div key={tier.name} {...fadeUp(i * 0.07)}>
-              <div className="glass glass-hover rounded-2xl p-5 text-center h-full flex flex-col items-center gap-3">
-                <div
-                  className={`w-14 h-14 rounded-xl border border-white/10 bg-gradient-to-br ${tier.color} flex items-center justify-center text-2xl shadow-lg`}
-                >
-                  {tier.icon}
-                </div>
-                <div>
-                  <div className="font-bold text-sm">{tier.name}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {tier.users}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <motion.p
-          {...fadeUp(0.4)}
-          className="text-center text-slate-500 text-sm mt-10"
-        >
-          Top 20% sobem · Bottom 20% descem · Calculado no 1.º dia de cada mês
-        </motion.p>
-      </div>
-    </section>
-  );
-}
-
-function Rankings() {
-  return (
-    <section id="rankings" className="py-28 md:py-32 px-4 bg-navy-900/40">
-      <div className="max-w-3xl mx-auto">
-        <motion.div {...fadeUp()} className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-extrabold mb-4">
-            Rankings ao vivo
-          </h2>
-          <p className="text-slate-400 text-lg">
-            Vê onde estás na classificação global.
-          </p>
-        </motion.div>
-
-        <motion.div {...fadeUp(0.1)} className="glass rounded-2xl overflow-hidden">
-          {/* header */}
-          <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-300">
-              Top Global — Esta Semana
-            </span>
-            <span className="text-xs text-gold-400 font-medium">
-              Preview
-            </span>
+            <div className="rounded-2xl border border-gold-400/40 bg-gold-400/10 p-3 text-gold-400">
+              <Crown className="h-7 w-7" />
+            </div>
           </div>
 
-          {/* rows */}
-          {mockRankings.map((row, i) => (
-            <div
-              key={row.rank}
-              className={`px-6 py-4 flex items-center gap-4 ${
-                i < mockRankings.length - 1 ? "border-b border-white/5" : ""
-              } ${i === 0 ? "bg-gold-500/5" : ""}`}
-            >
+          <div className="mt-6 space-y-3">
+            {picks.map((pick) => (
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  i === 0
-                    ? "bg-gold-500/20 text-gold-400"
-                    : i === 1
-                    ? "bg-slate-400/10 text-slate-300"
-                    : i === 2
-                    ? "bg-amber-700/20 text-amber-600"
-                    : "bg-navy-700 text-slate-400"
-                }`}
+                key={pick.ticker}
+                className={cn(
+                  "flex items-center gap-3 rounded-2xl border p-3",
+                  pick.up ? "border-electric/25 bg-electric/[0.06]" : "border-coral/25 bg-coral/[0.06]",
+                  pick.captain && "border-gold-400/50 bg-gold-400/[0.08]"
+                )}
               >
-                {row.rank}
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-sm">{row.name}</div>
-                <div className="text-xs text-slate-500">{row.tier}</div>
-              </div>
-              <div className="text-right">
-                <div className="font-bold text-gold-400 font-mono">
-                  {row.points.toFixed(1)}
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-white/[0.06]">
+                  <span className="font-mono text-xs font-black text-white">{pick.ticker}</span>
                 </div>
-                <div className="text-xs text-slate-500">pontos</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-black text-white">{pick.name}</p>
+                    {pick.captain ? <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" /> : null}
+                  </div>
+                  <p className="text-xs text-slate-500">Today points · {pick.pts.toFixed(1)}</p>
+                </div>
+                <div className={cn("flex items-center gap-1 font-mono text-sm font-black", pick.up ? "text-electric" : "text-coral")}>
+                  {pick.up ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                  {Math.abs(pick.change).toFixed(2)}%
+                </div>
               </div>
-            </div>
-          ))}
-
-          <div className="px-6 py-4 text-center">
-            <Link
-              href="/register"
-              className="text-sm text-gold-400 hover:text-gold-300 font-medium transition-colors"
-            >
-              Entra e vê o teu lugar →
-            </Link>
+            ))}
           </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-function CTA() {
-  return (
-    <section className="py-36 md:py-40 px-4">
-      <div className="max-w-2xl mx-auto text-center">
-        <motion.div {...fadeUp()}>
-          <h2 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
-            Pronto para{" "}
-            <span className="text-gradient-gold">bater o mercado?</span>
-          </h2>
-          <p className="text-slate-400 text-lg mb-10">
-            Junta-te agora. É grátis, é rápido, e vai pôr à prova o que sabes
-            sobre a bolsa.
-          </p>
-          <Link
-            href="/register"
-            className="group inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-950 font-bold px-10 py-5 rounded-xl text-lg transition-all duration-200 shadow-xl shadow-gold-500/25 hover:shadow-gold-400/35 hover:scale-[1.02] animate-pulse-gold"
-          >
-            Começar grátis agora
-            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="border-t border-white/5 py-10 px-4">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold tracking-[-0.01em] text-slate-100">
-            Sto<span className="text-gradient-gold">cko</span>
-          </span>
-          <span className="text-slate-600 ml-2">
-            © {new Date().getFullYear()}
-          </span>
-        </div>
-        <div className="flex items-center gap-6 text-sm text-slate-500">
-          <a href="#" className="hover:text-slate-300 transition-colors">
-            Privacidade
-          </a>
-          <a href="#" className="hover:text-slate-300 transition-colors">
-            Termos
-          </a>
-          <a href="mailto:hello@stocko.pt" className="hover:text-slate-300 transition-colors">
-            Contacto
-          </a>
         </div>
       </div>
-    </footer>
+    </motion.div>
   );
 }
-
-// ── página principal ──────────────────────────────────────────────────────────
 
 export default function Home() {
   return (
-    <main className="stocko-headings min-h-screen">
-      <Navbar />
-      <TickerBar />
-      <Hero />
-      <HowItWorks />
-      <Features />
-      <Tiers />
-      <Rankings />
-      <CTA />
-      <Footer />
-      <style jsx global>{`
-        .stocko-headings h1,
-        .stocko-headings h2,
-        .stocko-headings h3,
-        .stocko-headings h4,
-        .stocko-headings h5,
-        .stocko-headings h6 {
-          font-family: ${syne.style.fontFamily}, sans-serif;
-          font-weight: 700;
-        }
-        .stocko-headings h3 {
-          font-family: var(--font-inter), sans-serif !important;
-          font-weight: 700 !important;
-        }
-        .stocko-headings .text-sm {
-          line-height: 1.75;
-        }
-        .stocko-headings .text-xs {
-          line-height: 1.7;
-        }
-      `}</style>
+    <main className="min-h-screen overflow-hidden">
+      <Nav />
+
+      <section className="relative min-h-screen px-4 pt-32">
+        <div className="absolute left-1/2 top-16 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-electric/10 blur-3xl" />
+        <div className="absolute right-0 top-1/3 h-[420px] w-[420px] rounded-full bg-gold-400/10 blur-3xl" />
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1fr_0.9fr]">
+          <div className="relative">
+            <motion.div {...fade(0)} className="inline-flex items-center gap-2 rounded-full border border-electric/20 bg-electric/10 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-electric">
+              <Sparkles className="h-4 w-4" />
+              Bolsa real. Energia de fantasy sports.
+            </motion.div>
+            <motion.h1 {...fade(0.08)} className="mt-7 max-w-4xl text-6xl font-black leading-[0.9] tracking-[-0.07em] text-white md:text-8xl">
+              A bolsa virou <span className="text-gradient-score">arena.</span>
+            </motion.h1>
+            <motion.p {...fade(0.16)} className="mt-7 max-w-2xl text-lg leading-8 text-slate-400 md:text-xl">
+              Escolhe 5 ativos, ativa o capitão no dia certo, sobe nos rankings e luta por tiers mensais. Isto não é trading. É competição.
+            </motion.p>
+            <motion.div {...fade(0.24)} className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link href="/register" className="btn-primary rounded-2xl px-7 py-4 text-base font-black">
+                Entrar na arena <ChevronRight className="h-5 w-5" />
+              </Link>
+              <a href="#arena" className="btn-ghost rounded-2xl px-7 py-4 text-base font-black">
+                Ver experiência
+              </a>
+            </motion.div>
+            <motion.div {...fade(0.32)} className="mt-10 grid max-w-xl grid-cols-3 gap-3">
+              <div className="glass rounded-2xl p-4"><p className="font-mono text-3xl font-black text-electric">5</p><p className="text-xs text-slate-500">picks/semana</p></div>
+              <div className="glass rounded-2xl p-4"><p className="font-mono text-3xl font-black text-gold-400">2x</p><p className="text-xs text-slate-500">capitão</p></div>
+              <div className="glass rounded-2xl p-4"><p className="font-mono text-3xl font-black text-white">20%</p><p className="text-xs text-slate-500">sobem tier</p></div>
+            </motion.div>
+          </div>
+          <HeroMockup />
+        </div>
+      </section>
+
+      <section id="arena" className="px-4 py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-electric">Product loop</p>
+            <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-white md:text-6xl">Cada semana tem uma missão clara.</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-4">
+            {[
+              ["01", "Draft", "Escolhe exatamente 5 ativos até domingo 23:59."],
+              ["02", "Captain", "Segunda a quinta, duplica um pick por dia."],
+              ["03", "Scoring", "JP, EU/PT, US e Crypto atualizam após fecho."],
+              ["04", "Climb", "Sobe rankings, tiers e streaks mensais."],
+            ].map(([n, title, copy]) => (
+              <div key={n} className="glass glass-hover rounded-[1.75rem] p-6">
+                <p className="font-mono text-5xl font-black text-gradient-gold">{n}</p>
+                <h3 className="mt-5 text-xl font-black text-white">{title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="draft" className="px-4 py-24">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2">
+          <div className="glass rounded-[2rem] p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-electric">Draft room</p>
+                <h2 className="mt-2 text-3xl font-black text-white">Trading cards para ativos reais.</h2>
+              </div>
+              <Radar className="h-10 w-10 text-electric" />
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {picks.map((pick) => (
+                <div key={pick.ticker} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xl font-black text-white">{pick.ticker}</span>
+                    <span className={pick.up ? "text-electric" : "text-coral"}>{pick.up ? "+" : "-"}{Math.abs(pick.change).toFixed(2)}%</span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500">{pick.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass rounded-[2rem] p-6">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-gold-400">Leaderboard preview</p>
+            <div className="mt-6 space-y-3">
+              {ranking.map(([rank, name, tier, pts]) => (
+                <div key={rank} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                  <span className="font-mono text-2xl font-black text-gold-400">#{rank}</span>
+                  <div className="flex-1">
+                    <p className="font-black text-white">@{name}</p>
+                    <p className="text-xs text-slate-500">{tier}</p>
+                  </div>
+                  <span className="font-mono font-black text-electric">{Number(pts).toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tiers" className="px-4 py-24">
+        <div className="mx-auto max-w-7xl rounded-[2.5rem] border border-gold-400/20 bg-gold-400/[0.06] p-8">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-gold-400">Monthly tiers</p>
+              <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-white md:text-6xl">Não jogas só a semana. Jogas a época.</h2>
+              <p className="mt-5 text-slate-400">Bronze, Silver, Gold, Platinum, Diamond e Elite. Top 20% sobem. Bottom 20% descem.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              {["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Elite"].map((tier) => (
+                <div key={tier} className="rounded-2xl border border-white/10 bg-black/20 p-5 text-center">
+                  <p className="text-lg font-black text-white">{tier}</p>
+                  <p className="mt-1 text-xs text-slate-500">tier badge</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="social" className="px-4 py-24">
+        <div className="mx-auto max-w-5xl text-center">
+          <Users className="mx-auto h-12 w-12 text-electric" />
+          <h2 className="mt-6 text-4xl font-black tracking-[-0.04em] text-white md:text-6xl">Cria uma liga. Humilha os teus amigos.</h2>
+          <p className="mx-auto mt-5 max-w-2xl text-slate-400">Cada grupo tem ranking privado, código de convite e batalha semanal. O Stocko é social por natureza.</p>
+          <Link href="/register" className="btn-primary mt-9 rounded-2xl px-8 py-4 text-base font-black">
+            Começar agora
+          </Link>
+        </div>
+      </section>
+
+      <footer className="border-t border-white/5 px-4 py-10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-slate-500 md:flex-row">
+          <span className="font-black text-white">Sto<span className="text-gradient-gold">cko</span></span>
+          <span>© {new Date().getFullYear()} · Fantasy investing</span>
+        </div>
+      </footer>
     </main>
   );
 }
+

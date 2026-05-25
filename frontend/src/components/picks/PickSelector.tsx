@@ -95,22 +95,22 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
   return (
     <div className="space-y-4">
       {/* picks seleccionados */}
-      <div className="surface-card rounded-xl p-4 space-y-2">
+      <div className="glass rounded-[1.5rem] border-white/10 p-4 space-y-3">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <span className="font-semibold">
-              Picks seleccionados
+            <span className="font-black uppercase tracking-[0.14em] text-xs text-slate-400">
+              Selected tray
             </span>
             <span className={cn(
-              "text-xs font-bold px-2 py-0.5 rounded-full",
+              "text-xs font-black px-2 py-0.5 rounded-full font-mono",
               selected.length === maxPicks
-                ? "bg-success/20 text-success"
-                : "bg-gold-500/20 text-gold-400"
+                ? "bg-success/20 text-success border border-success/25"
+                : "bg-gold-400/20 text-gold-300 border border-gold-400/25"
             )}>
               {selected.length}/{maxPicks}
             </span>
           </div>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs font-semibold text-slate-500">
             Marca ⭐ para capitão
           </span>
         </div>
@@ -123,10 +123,10 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
               <div
                 key={p.ticker}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold border transition-all",
                   p.isCaptainDraft
-                    ? "bg-gold-500/20 border-gold-500/50 text-gold-300"
-                    : "bg-navy-700 border-white/10 text-slate-200"
+                    ? "bg-gold-400/20 border-gold-400/60 text-gold-300 shadow-[0_0_20px_rgba(255,215,0,0.12)]"
+                    : "bg-white/[0.06] border-white/10 text-slate-200"
                 )}
               >
                 <button
@@ -151,7 +151,7 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
 
       {/* erro */}
       {error && (
-        <div className="flex items-center gap-2 text-danger bg-danger/10 border border-danger/20 rounded-xl p-3 text-sm">
+        <div className="flex items-center gap-2 text-danger bg-danger/10 border border-danger/20 rounded-2xl p-3 text-sm">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
@@ -165,14 +165,14 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Pesquisar acção (ticker ou nome)..."
-          className="w-full bg-navy-900/70 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 transition-all"
+          className="w-full bg-white/[0.06] border border-electric/15 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-electric/50 transition-all"
         />
       </div>
 
       {/* lista de stocks */}
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 text-gold-400 animate-spin" />
+          <Loader2 className="w-6 h-6 text-electric animate-spin" />
         </div>
       ) : (
         <div className="max-h-80 overflow-y-auto space-y-1.5 pr-1">
@@ -188,20 +188,20 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
                 onClick={() => toggleStock(stock.ticker)}
                 disabled={disabled}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all border",
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all border",
                   sel
                     ? cap
-                      ? "bg-gold-500/15 border-gold-500/35"
-                      : "bg-navy-700/85 border-white/15"
+                      ? "bg-gold-400/15 border-gold-400/45"
+                      : "bg-electric/[0.08] border-electric/25"
                     : disabled
                     ? "opacity-40 cursor-not-allowed border-transparent"
-                    : "hover:bg-navy-700/60 border-transparent"
+                    : "hover:bg-white/[0.05] border-transparent"
                 )}
               >
                 {/* check */}
                 <div className={cn(
                   "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
-                  sel ? "bg-gold-500 border-gold-500" : "border-slate-600"
+                  sel ? "bg-electric border-electric" : "border-slate-600"
                 )}>
                   {sel && <Check className="w-3 h-3 text-navy-950" />}
                 </div>
@@ -209,15 +209,15 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
                 {/* info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-sm">{stock.ticker}</span>
-                    <span className="text-xs text-slate-500 truncate">{stock.name}</span>
+                    <span className="font-mono font-black text-sm text-white">{stock.ticker}</span>
+                    <span className="text-xs text-slate-400 truncate">{stock.name}</span>
                   </div>
                   <span className="text-xs text-slate-600">{stock.sector} · {stock.market}</span>
                 </div>
 
                 {/* preço */}
                 {stock.latestPrice && (
-                  <div className={cn("text-sm font-semibold shrink-0", positive ? "text-success" : "text-danger")}>
+                  <div className={cn("font-mono text-sm font-black shrink-0", positive ? "text-success" : "text-danger")}>
                     {positive ? "+" : ""}{stock.latestPrice.pctChange.toFixed(2)}%
                   </div>
                 )}
@@ -225,7 +225,7 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
             );
           })}
           {!filtered.length && (
-            <div className="surface-muted rounded-xl p-4 text-sm text-slate-400 text-center">
+            <div className="surface-muted rounded-2xl p-4 text-sm text-slate-400 text-center">
               Não encontrámos acções para essa pesquisa.
             </div>
           )}
@@ -240,7 +240,7 @@ export default function PickSelector({ maxPicks, initialPicks = [], onSuccess, o
         <button
           onClick={handleSubmit}
           disabled={selected.length !== maxPicks || submitting}
-          className="btn-primary flex-1"
+          className="btn-primary flex-1 font-black"
         >
           {submitting ? (
             <>

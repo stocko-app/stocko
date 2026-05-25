@@ -22,6 +22,8 @@ import {
   validateNewPassword,
 } from "@/lib/passwordPolicy";
 import { useAuth } from "@/store/auth";
+import { GlassPanel, PageHeader, TierBadge } from "@/components/stocko/ui";
+import { AppShell } from "@/components/stocko/AppShell";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -79,12 +81,12 @@ function StatCard({ icon: Icon, label, value, sub }: {
   sub?: string;
 }) {
   return (
-    <div className="surface-card rounded-xl p-4">
-      <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
+    <div className="glass rounded-[1.35rem] border-white/10 p-4">
+      <div className="flex items-center gap-2 text-slate-400 text-xs mb-2 font-black uppercase tracking-[0.12em]">
         <Icon className="w-3.5 h-3.5" />
         {label}
       </div>
-      <div className="font-bold text-xl">{value}</div>
+      <div className="font-mono font-black text-2xl text-white">{value}</div>
       {sub && <div className="text-xs text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
@@ -169,64 +171,68 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="surface-card flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <GlassPanel className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-electric border-t-transparent rounded-full animate-spin" />
+      </GlassPanel>
     );
   }
 
   if (error) {
     return (
-      <div className="surface-card flex items-center gap-3 text-danger bg-danger/10 border border-danger/20">
+      <GlassPanel tone="coral" className="flex items-center gap-3 text-danger">
         <AlertCircle className="w-5 h-5 shrink-0" />
         <span className="text-sm">{error}</span>
-      </div>
+      </GlassPanel>
     );
   }
 
   if (!profile) return null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20 md:pb-8">
-      {/* cabeçalho */}
-      <div className="surface-card flex items-center gap-3">
-        <User className="w-6 h-6 text-gold-400" />
-        <div>
-          <p className="section-title">Conta</p>
-          <h1 className="text-2xl font-extrabold">Perfil</h1>
-        </div>
-      </div>
+    <AppShell>
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 md:pb-8">
+      <PageHeader
+        eyebrow="Player card"
+        title={<>@{profile.username}</>}
+        subtitle="Streaks, tiers e conquistas: o teu histórico competitivo dentro do Stocko."
+        action={<User className="hidden h-16 w-16 text-electric md:block" />}
+      />
 
       {/* card principal */}
-      <div className="surface-card">
-        <div className="flex items-start gap-4">
+      <GlassPanel tone="gold">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           {/* avatar */}
-          <div className="w-14 h-14 rounded-2xl bg-gold-500/20 flex items-center justify-center text-2xl font-bold text-gold-400 shrink-0">
-            {profile.username.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-extrabold truncate">@{profile.username}</h2>
-            <p className="text-slate-400 text-sm">{profile.email}</p>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="text-xs bg-gold-500/15 text-gold-400 px-2.5 py-1 rounded-full font-medium">
-                {tierLabels[profile.leagueTier] ?? profile.leagueTier}
-              </span>
-              <span className="text-xs text-slate-500 capitalize">{profile.plan}</span>
+          <div className="flex items-start gap-4">
+            <div className="w-20 h-20 rounded-[1.7rem] bg-gold-400/15 border border-gold-400/30 flex items-center justify-center text-4xl font-black text-gold-400 shrink-0 shadow-[0_0_34px_rgba(255,215,0,0.16)]">
+              {profile.username.charAt(0).toUpperCase()}
             </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-2xl font-black truncate">@{profile.username}</h2>
+              <p className="text-slate-400 text-sm">{profile.email}</p>
+              <div className="flex flex-wrap items-center gap-3 mt-3">
+                <TierBadge tier={profile.leagueTier} />
+                <span className="text-xs text-slate-500 capitalize font-black tracking-[0.12em]">{profile.plan}</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-left md:text-right">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Streak atual</p>
+            <p className="font-mono text-6xl font-black text-gold-400 leading-none">{profile.streakWeeks}</p>
+            <p className="text-xs text-slate-400 mt-1">semanas seguidas</p>
           </div>
         </div>
 
         {/* tier histórico */}
         {profile.bestLeagueTier !== profile.leagueTier && (
-          <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-sm text-slate-400">
+          <div className="mt-5 pt-4 border-t border-white/5 flex items-center gap-2 text-sm text-slate-400">
             <Trophy className="w-4 h-4 text-gold-400 shrink-0" />
             Melhor tier: <span className="text-gold-400 font-semibold ml-1">{tierLabels[profile.bestLeagueTier] ?? profile.bestLeagueTier}</span>
           </div>
         )}
-      </div>
+      </GlassPanel>
 
       {/* alterar password */}
-      <div className="surface-card rounded-2xl overflow-hidden p-0">
+      <div className="glass rounded-[1.5rem] overflow-hidden p-0">
         <button
           type="button"
           onClick={() => {
@@ -237,7 +243,7 @@ export default function ProfilePage() {
           className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-white/[0.03] transition-colors"
         >
           <div className="flex items-center gap-3">
-            <Lock className="w-5 h-5 text-gold-400 shrink-0" />
+            <Lock className="w-5 h-5 text-electric shrink-0" />
             <span className="font-semibold text-white">Alterar password</span>
           </div>
           <span className="text-slate-500 text-sm">{pwdOpen ? "Fechar" : "Abrir"}</span>
@@ -255,7 +261,7 @@ export default function ProfilePage() {
                   value={currentPwd}
                   onChange={(e) => { setCurrentPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
                   autoComplete="current-password"
-                  className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-electric/50 focus:ring-1 focus:ring-electric/20 pr-10"
                   placeholder="••••••••"
                 />
                 <button
@@ -277,7 +283,7 @@ export default function ProfilePage() {
                   value={newPwd}
                   onChange={(e) => { setNewPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
                   autoComplete="new-password"
-                  className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-electric/50 focus:ring-1 focus:ring-electric/20 pr-10"
                   placeholder="nova password"
                 />
                 <button
@@ -299,7 +305,7 @@ export default function ProfilePage() {
                   value={confirmPwd}
                   onChange={(e) => { setConfirmPwd(e.target.value); setPwdError(""); setPwdOk(""); }}
                   autoComplete="new-password"
-                  className="w-full bg-navy-900/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 pr-10"
+                  className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-electric/50 focus:ring-1 focus:ring-electric/20 pr-10"
                   placeholder="repete a nova password"
                 />
                 <button
@@ -378,23 +384,23 @@ export default function ProfilePage() {
 
       {/* conquistas */}
       <div>
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+        <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.16em] mb-3">
           Conquistas
         </h2>
 
         {achievements.length === 0 ? (
-          <div className="surface-card p-8 text-center text-slate-500 text-sm">
+          <GlassPanel className="p-8 text-center text-slate-500 text-sm">
             Ainda sem conquistas — joga mais semanas para as desbloquear!
-          </div>
+          </GlassPanel>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {achievements.map((a, i) => {
               const info = achievementLabels[a.type] ?? { icon: "🏅", label: a.type };
               return (
-                <div key={i} className="surface-card glass-hover rounded-xl p-4 flex items-center gap-3">
-                  <span className="text-2xl shrink-0">{info.icon}</span>
+                <div key={i} className="glass glass-hover rounded-[1.35rem] p-4 flex items-center gap-3 border-electric/20">
+                  <span className="text-2xl shrink-0 drop-shadow-[0_0_12px_rgba(0,255,136,0.25)]">{info.icon}</span>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{info.label}</div>
+                    <div className="text-sm font-black truncate">{info.label}</div>
                     <div className="text-xs text-slate-500">
                       {new Date(a.earnedAt).toLocaleDateString("pt-PT", {
                         day: "numeric",
@@ -417,5 +423,6 @@ export default function ProfilePage() {
         })}
       </p>
     </div>
+    </AppShell>
   );
 }
