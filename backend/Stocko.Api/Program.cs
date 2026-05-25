@@ -186,11 +186,32 @@ using (var scope = app.Services.CreateScope())
     var jobs = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
     var lisbonTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
 
-    // Market data: cobre JP (1h-7h30) + EU/PT (9h-17h30) + US (14h30-22h) + Crypto (24h)
+    jobs.RemoveIfExists("market-data");
+
+    // Market data: actualizar apenas o grupo necessário antes do respectivo scoring.
+    // Evita correr todos os tickers de hora a hora e esgotar Fly/Supabase/APIs free tier.
     jobs.AddOrUpdate<MarketDataJob>(
-        "market-data",
-        job => job.ExecuteAsync(),
-        "0 1-22 * * 1-5",   // cada hora das 01h às 22h Seg-Sex
+        "market-data-jp",
+        job => job.ExecuteJPAsync(),
+        "30 7 * * 1-5",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    jobs.AddOrUpdate<MarketDataJob>(
+        "market-data-eu",
+        job => job.ExecuteEUAsync(),
+        "30 17 * * 1-5",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    jobs.AddOrUpdate<MarketDataJob>(
+        "market-data-us",
+        job => job.ExecuteUSAsync(),
+        "15 21 * * 1-5",
+        new RecurringJobOptions { TimeZone = lisbonTz });
+
+    jobs.AddOrUpdate<MarketDataJob>(
+        "market-data-crypto",
+        job => job.ExecuteCryptoAsync(),
+        "15 0 * * 2-6",
         new RecurringJobOptions { TimeZone = lisbonTz });
 
     // Scoring JP: após fecho Nikkei (~07h45 Lisboa)

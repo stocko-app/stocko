@@ -22,13 +22,13 @@ public class MarketDataService
         _alphaVantageKey = config["AlphaVantage:ApiKey"]!;
     }
 
-    public async Task<StockPriceResult?> FetchFromTwelveDataAsync(string ticker)
+    public async Task<StockPriceResult?> FetchFromTwelveDataAsync(string ticker, CancellationToken ct = default)
     {
         try
         {
             Console.WriteLine($"🔄 TwelveData: {ticker}");
             var url = $"https://api.twelvedata.com/quote?symbol={ticker}&apikey={_twelveDataKey}";
-            var response = await _http.GetStringAsync(url);
+            var response = await _http.GetStringAsync(url, ct);
             using var json = JsonDocument.Parse(response);
             var root = json.RootElement;
 
@@ -62,6 +62,10 @@ public class MarketDataService
                 Source = "TwelveData"
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ TwelveData excepção: {ex.Message}");
@@ -69,13 +73,13 @@ public class MarketDataService
         }
     }
 
-    public async Task<StockPriceResult?> FetchFromFinnhubAsync(string ticker)
+    public async Task<StockPriceResult?> FetchFromFinnhubAsync(string ticker, CancellationToken ct = default)
     {
         try
         {
             Console.WriteLine($"🔄 Finnhub: {ticker}");
             var url = $"https://finnhub.io/api/v1/quote?symbol={ticker}&token={_finnhubKey}";
-            var response = await _http.GetStringAsync(url);
+            var response = await _http.GetStringAsync(url, ct);
             using var json = JsonDocument.Parse(response);
             var root = json.RootElement;
 
@@ -97,6 +101,10 @@ public class MarketDataService
                 Source = "Finnhub"
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Finnhub excepção: {ex.Message}");
@@ -104,13 +112,13 @@ public class MarketDataService
         }
     }
 
-    public async Task<StockPriceResult?> FetchFromAlphaVantageAsync(string ticker)
+    public async Task<StockPriceResult?> FetchFromAlphaVantageAsync(string ticker, CancellationToken ct = default)
     {
         try
         {
             Console.WriteLine($"🔄 AlphaVantage: {ticker}");
             var url = $"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={_alphaVantageKey}";
-            var response = await _http.GetStringAsync(url);
+            var response = await _http.GetStringAsync(url, ct);
             using var json = JsonDocument.Parse(response);
             var root = json.RootElement;
 
@@ -139,6 +147,10 @@ public class MarketDataService
                 Source = "AlphaVantage"
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ AlphaVantage excepção: {ex.Message}");
@@ -146,14 +158,16 @@ public class MarketDataService
         }
     }
 
-    public async Task FetchAndCachePriceAsync(string ticker)
+    public async Task FetchAndCachePriceAsync(string ticker, CancellationToken ct = default)
     {
-        var stock = await _db.Stocks.FirstOrDefaultAsync(s => s.Ticker == ticker);
+        ct.ThrowIfCancellationRequested();
+
+        var stock = await _db.Stocks.FirstOrDefaultAsync(s => s.Ticker == ticker, ct);
         if (stock == null) return;
 
-        var result = await FetchFromTwelveDataAsync(ticker)
-                  ?? await FetchFromFinnhubAsync(ticker)
-                  ?? await FetchFromAlphaVantageAsync(ticker);
+        var result = await FetchFromTwelveDataAsync(ticker, ct)
+                  ?? await FetchFromFinnhubAsync(ticker, ct)
+                  ?? await FetchFromAlphaVantageAsync(ticker, ct);
 
         if (result == null)
         {
@@ -161,10 +175,10 @@ public class MarketDataService
             return;
         }
 
-        var exists = await _db.StockPrices.AnyAsync(p => p.StockId == stock.Id && p.Date == result.Date);
+        var exists = await _db.StockPrices.AnyAsync(p => p.StockId == stock.Id && p.Date == result.Date, ct);
         if (exists)
         {
-            var existing = await _db.StockPrices.FirstAsync(p => p.StockId == stock.Id && p.Date == result.Date);
+            var existing = await _db.StockPrices.FirstAsync(p => p.StockId == stock.Id && p.Date == result.Date, ct);
             existing.Close = result.Close;
             existing.PctChange = result.PctChange;
         }
@@ -184,7 +198,7 @@ public class MarketDataService
             });
         }
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
         Console.WriteLine($"✅ {ticker} ({result.Source}): {result.Close} ({result.PctChange:+0.00;-0.00}%)");
     }
 
@@ -198,7 +212,7 @@ public class MarketDataService
         foreach (var ticker in tickers)
         {
             ct.ThrowIfCancellationRequested();
-            await FetchAndCachePriceAsync(ticker);
+            await FetchAndCachePriceAsync(ticker, ct);
             await Task.Delay(8000, ct); // respeitar limite TwelveData: 8 calls/min
         }
     }
