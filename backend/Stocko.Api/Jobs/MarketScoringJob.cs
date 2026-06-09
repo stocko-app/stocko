@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
@@ -5,55 +6,48 @@ using Stocko.Api.Services;
 namespace Stocko.Api.Jobs;
 
 /// <summary>
-/// Job de scoring por tipo de mercado.
-/// Corre várias vezes por dia, cada vez após o fecho de um grupo de mercados.
+/// Scoring por mercado. Cada fase usa scope próprio para libertar conexões Postgres
+/// antes de notificações ou fases seguintes (evita esgotar pool na VM 256MB).
 /// </summary>
 public class MarketScoringJob
 {
-    private readonly ScoringService _scoringService;
-    private readonly NotificationService _notificationService;
-    private readonly StockoDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    // Mercados agrupados por horário de fecho
     public static readonly string[] MarketsJP    = ["JP"];
     public static readonly string[] MarketsEU    = ["EU", "PT"];
     public static readonly string[] MarketsUS    = ["US", "EMERGING"];
     public static readonly string[] MarketsCrypto = ["CRYPTO", "COMMODITY"];
 
-    public MarketScoringJob(ScoringService scoringService, NotificationService notificationService, StockoDbContext db)
+    public MarketScoringJob(IServiceScopeFactory scopeFactory)
     {
-        _scoringService = scoringService;
-        _notificationService = notificationService;
-        _db = db;
+        _scopeFactory = scopeFactory;
     }
 
-    // Chamado após fecho do mercado japonês (~07h45 Lisboa)
+    [DisableConcurrentExecution(60 * 15)]
     public async Task ExecuteJPAsync()
         => await ExecuteForMarketsAsync(MarketsJP, "JP");
 
-    // Chamado após fecho dos mercados europeus (~17h45 Lisboa)
+    [DisableConcurrentExecution(60 * 15)]
     public async Task ExecuteEUAsync()
         => await ExecuteForMarketsAsync(MarketsEU, "EU/PT");
 
-    // Chamado após fecho dos mercados americanos (~21h30 Lisboa)
+    [DisableConcurrentExecution(60 * 15)]
     public async Task ExecuteUSAsync()
     {
         await ExecuteForMarketsAsync(MarketsUS, "US/EMERGING");
 
-        // Após o fecho US é o fim do dia de scoring — enviar resultados na Sexta
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         if (today.DayOfWeek == DayOfWeek.Friday)
             await SendWeeklyResultsAsync();
     }
 
-    // Chamado à meia-noite Lisboa para crypto/commodity (~00h30 UTC)
+    [DisableConcurrentExecution(60 * 15)]
     public async Task ExecuteCryptoAsync()
         => await ExecuteForMarketsAsync(MarketsCrypto, "CRYPTO/COMMODITY");
 
-    // ── lógica comum ─────────────────────────────────────────────────────────
-
     private async Task ExecuteForMarketsAsync(string[] markets, string label)
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(6));
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         if (today.DayOfWeek == DayOfWeek.Saturday || today.DayOfWeek == DayOfWeek.Sunday)
@@ -63,31 +57,52 @@ public class MarketScoringJob
         }
 
         Console.WriteLine($"🕐 MarketScoringJob [{label}] iniciado: {today}");
-        await _scoringService.CalculateDailyScoresAsync(today, markets);
+        try
+        {
+            await using (var scope = _scopeFactory.CreateAsyncScope())
+            {
+                var scoring = scope.ServiceProvider.GetRequiredService<ScoringService>();
+                await scoring.CalculateDailyScoresAsync(today, markets);
+            }
 
-        // Actualizar ranks após cada scoring para manter rankings actualizados
-        var gameWeekService = new GameWeekService(_db);
-        var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
-        await _scoringService.UpdateRanksAsync(currentWeek.Id);
+            await using (var scope = _scopeFactory.CreateAsyncScope())
+            {
+                var gameWeekService = scope.ServiceProvider.GetRequiredService<GameWeekService>();
+                var scoring = scope.ServiceProvider.GetRequiredService<ScoringService>();
+                var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
+                await scoring.UpdateRanksAsync(currentWeek.Id);
+            }
 
-        Console.WriteLine($"✅ MarketScoringJob [{label}] concluído: {today}");
+            Console.WriteLine($"✅ MarketScoringJob [{label}] concluído: {today}");
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine($"⏱️ MarketScoringJob [{label}] cancelado por timeout às {DateTime.UtcNow:HH:mm:ss}");
+        }
     }
 
     private async Task SendWeeklyResultsAsync()
     {
-        var gameWeekService = new GameWeekService(_db);
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
+        var gameWeekService = scope.ServiceProvider.GetRequiredService<GameWeekService>();
+        var scoring = scope.ServiceProvider.GetRequiredService<ScoringService>();
+        var notifications = scope.ServiceProvider.GetRequiredService<NotificationService>();
+
         var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
+        await scoring.UpdateStreaksAsync(currentWeek.Id);
 
-        await _scoringService.UpdateStreaksAsync(currentWeek.Id);
-
-        var scores = await _db.WeeklyScores
+        var scores = await db.WeeklyScores
             .Where(ws => ws.GameWeekId == currentWeek.Id)
-            .ToListAsync();
+            .ToListAsync(cts.Token);
 
         var totalPlayers = scores.Count;
         foreach (var score in scores)
         {
-            await _notificationService.SendWeeklyResultAsync(
+            cts.Token.ThrowIfCancellationRequested();
+            await notifications.SendWeeklyResultAsync(
                 score.UserId, score.RankGlobal, score.TotalPoints, totalPlayers);
         }
 

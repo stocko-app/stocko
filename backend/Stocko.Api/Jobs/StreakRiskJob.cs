@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
@@ -6,34 +7,35 @@ namespace Stocko.Api.Jobs;
 
 public class StreakRiskJob
 {
-    private readonly StockoDbContext _db;
-    private readonly GameWeekService _gameWeekService;
-    private readonly NotificationService _notificationService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public StreakRiskJob(StockoDbContext db, GameWeekService gameWeekService, NotificationService notificationService)
+    public StreakRiskJob(IServiceScopeFactory scopeFactory)
     {
-        _db = db;
-        _gameWeekService = gameWeekService;
-        _notificationService = notificationService;
+        _scopeFactory = scopeFactory;
     }
 
+    [DisableConcurrentExecution(60 * 10)]
     public async Task ExecuteAsync()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         Console.WriteLine($"🕐 StreakRiskJob iniciado: {DateTime.UtcNow:HH:mm:ss}");
 
-        var currentWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
+        var gameWeekService = scope.ServiceProvider.GetRequiredService<GameWeekService>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<NotificationService>();
 
-        // Utilizadores que já fizeram picks esta semana
-        var usersWithPicks = (await _db.Picks
+        var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
+
+        var usersWithPicks = (await db.Picks
             .Where(p => p.GameWeekId == currentWeek.Id)
             .Select(p => p.UserId)
             .Distinct()
-            .ToListAsync()).ToHashSet();
+            .ToListAsync(cts.Token)).ToHashSet();
 
-        // Utilizadores com streak > 3 que NÃO fizeram picks esta semana
-        var atRisk = await _db.Users
+        var atRisk = await db.Users
             .Where(u => u.StreakWeeks > 3 && !usersWithPicks.Contains(u.Id))
-            .ToListAsync();
+            .ToListAsync(cts.Token);
 
         if (!atRisk.Any())
         {
@@ -42,7 +44,10 @@ public class StreakRiskJob
         }
 
         foreach (var user in atRisk)
-            await _notificationService.SendStreakRiskAsync(user.Id, user.StreakWeeks);
+        {
+            cts.Token.ThrowIfCancellationRequested();
+            await notificationService.SendStreakRiskAsync(user.Id, user.StreakWeeks);
+        }
 
         Console.WriteLine($"✅ StreakRiskJob: aviso enviado a {atRisk.Count} utilizadores");
     }

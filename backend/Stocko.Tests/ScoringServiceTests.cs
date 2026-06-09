@@ -16,13 +16,19 @@ public class ScoringServiceTests
         return new StockoDbContext(options);
     }
 
+    private static AchievementService CreateAchievementService(StockoDbContext db)
+    {
+        var notifications = new NotificationService(new HttpClient(), db);
+        return new AchievementService(db, notifications);
+    }
+
     // ── TESTES DA FÓRMULA BASE ────────────────────────────────────────
 
     [Fact]
     public void BasePoints_MaxVariation_Returns30()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(15m);
@@ -33,7 +39,7 @@ public class ScoringServiceTests
     public void BasePoints_AboveMax_StillReturns30()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(20m);
@@ -44,7 +50,7 @@ public class ScoringServiceTests
     public void BasePoints_Zero_Returns15()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(0m);
@@ -55,7 +61,7 @@ public class ScoringServiceTests
     public void BasePoints_MinusOne_Returns14()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(-1m);
@@ -66,7 +72,7 @@ public class ScoringServiceTests
     public void BasePoints_MinusFifteen_ReturnsZero()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(-15m);
@@ -77,7 +83,7 @@ public class ScoringServiceTests
     public void BasePoints_BelowMinus15_ReturnsZero()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(-20m);
@@ -88,7 +94,7 @@ public class ScoringServiceTests
     public void BasePoints_PlusFive_Returns20()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(5m);
@@ -99,7 +105,7 @@ public class ScoringServiceTests
     public void BasePoints_MinusFive_Returns10()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateBasePoints(-5m);
@@ -112,7 +118,7 @@ public class ScoringServiceTests
     public void DayBonus_PositiveDay_ReturnsOne()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateDayPositiveBonus(0.1m);
@@ -123,7 +129,7 @@ public class ScoringServiceTests
     public void DayBonus_ZeroDay_ReturnsZero()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateDayPositiveBonus(0m);
@@ -134,7 +140,7 @@ public class ScoringServiceTests
     public void DayBonus_NegativeDay_ReturnsZero()
     {
         var db = CreateInMemoryDb();
-        var achievementService = new AchievementService(db);
+        var achievementService = CreateAchievementService(db);
         var service = new ScoringService(db, achievementService);
 
         var result = service.CalculateDayPositiveBonus(-1m);
@@ -158,7 +164,7 @@ public class ScoringServiceTests
 	public void BasePoints_AllScenarios(double pctChange, double expected)
 	{
 		var db = CreateInMemoryDb();
-		var achievementService = new AchievementService(db);
+		var achievementService = CreateAchievementService(db);
 		var service = new ScoringService(db, achievementService);
 
 		var result = service.CalculateBasePoints((decimal)pctChange);

@@ -1,24 +1,26 @@
 using Hangfire;
-using Hangfire.PostgreSql;
+using Hangfire.MemoryStorage;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Stocko.Api.Data;
 using Stocko.Api.Data.Seeds;
+using Stocko.Api.Filters;
 using Stocko.Api.Jobs;
 using Stocko.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database — ligação directa ao Supabase Postgres para pedidos da API
-// DirectConnection usa porta 5432 directa (sem PgBouncer), mais estável para queries curtas
+// Database — ligação directa ao Supabase Postgres para pedidos da API.
+// NOTA: pooler (6543) foi testado em e4d1ba9 e revertido em 7b09b24 por instabilidade com EF.
 var directConn = builder.Configuration.GetConnectionString("DirectConnection")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")!;
 var directConnBuilder = new NpgsqlConnectionStringBuilder(directConn)
 {
-    MaxPoolSize = 8,
+    // Só EF usa Postgres agora (Hangfire em memória) — pool único na VM 256MB
+    MaxPoolSize = 6,
     MinPoolSize = 0,
     ConnectionIdleLifetime = 60,
-    ConnectionLifetime = 600, // recicla conexões (evita socket morto após idle no Supabase)
+    ConnectionLifetime = 600,
     Timeout = 15,
     KeepAlive = 30,
     TcpKeepAlive = true
@@ -46,27 +48,22 @@ builder.Services.AddSingleton<Supabase.Client>(sp =>
     return client;
 });
 
-// Hangfire — usa Session pooler (porta 5432) porque precisa de advisory locks incompatíveis com Transaction pooler
-var hangfireBaseConn = builder.Configuration.GetConnectionString("HangfireConnection") ?? directConn;
-var hangfireConnBuilder = new NpgsqlConnectionStringBuilder(hangfireBaseConn)
-{
-    MaxPoolSize = 4,
-    MinPoolSize = 0,
-    ConnectionIdleLifetime = 60,
-    ConnectionLifetime = 600,
-    Timeout = 15,
-    KeepAlive = 30,
-    TcpKeepAlive = true
-};
-var hangfireConnString = hangfireConnBuilder.ConnectionString;
-builder.Services.AddHangfire(config =>
-    config.UsePostgreSqlStorage(c =>
-        c.UseNpgsqlConnection(hangfireConnString)));
+// Hangfire em memória — recurring jobs são re-registados no arranque (Program.cs).
+// Elimina polling permanente ao Postgres (causa principal de esgotamento no free tier).
+builder.Services.AddHangfire(config => config.UseMemoryStorage());
 builder.Services.AddHangfireServer(options =>
 {
-    // 1 worker: jobs pesados não competem entre si por CPU/DB na VM 256MB
     options.WorkerCount = 1;
     options.Queues = new[] { "default" };
+    options.SchedulePollingInterval = TimeSpan.FromSeconds(30);
+});
+
+builder.Services.AddRequestTimeouts(options =>
+{
+    options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy
+    {
+        Timeout = TimeSpan.FromSeconds(25)
+    };
 });
 
 // Services
@@ -91,6 +88,9 @@ builder.Services.AddHttpClient<NewsService>(client =>
 });
 builder.Services.AddScoped<NewsService>();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<HealthMonitorState>();
+builder.Services.AddHostedService<DbHeartbeatBackgroundService>();
+builder.Services.AddSingleton<JobTimingFilter>();
 
 // Jobs
 builder.Services.AddScoped<MarketDataJob>();
@@ -124,6 +124,8 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+GlobalJobFilters.Filters.Add(app.Services.GetRequiredService<JobTimingFilter>());
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -134,42 +136,68 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("WebPolicy");
 app.UseHttpsRedirection();
+app.UseRequestTimeouts();
 app.UseMiddleware<SupabaseAuthMiddleware>();
 app.MapControllers();
 
-// Liveness — sem Postgres: os checks HTTP da Fly vinham esgotar o pool (vários CanConnect em paralelo).
+// Liveness rápido — só para debug manual; a Fly usa /health (com BD) para auto-restart.
 app.MapGet("/health/live", () => Results.Text("OK"));
 
-// Readiness — Postgres com limite de tempo; usar para diagnóstico manual ou monitor externo
-app.MapGet("/health", async (HttpContext ctx, IServiceScopeFactory scopes, ILoggerFactory logs) =>
+// Readiness — Postgres com timeout 4s; Fly health check reinicia a máquina se falhar
+app.MapGet("/health", async (HttpContext ctx, IServiceScopeFactory scopes, HealthMonitorState monitor, ILoggerFactory logs) =>
 {
     var log = logs.CreateLogger("Health");
-    try
-    {
-        await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
+    await using var scope = scopes.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
 
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
-        cts.CancelAfter(TimeSpan.FromSeconds(4));
+    var result = await SystemHealthProbe.CheckDatabaseAsync(
+        db, TimeSpan.FromSeconds(4), ctx.RequestAborted);
+    monitor.RecordDbCheck(result);
 
-        if (!await db.Database.CanConnectAsync(cts.Token))
-        {
-            log.LogWarning("Health: CanConnectAsync=false");
-            return Results.StatusCode(503);
-        }
-
+    if (result.Ok)
         return Results.Text("OK");
-    }
-    catch (OperationCanceledException)
+
+    var snap = SystemHealthProbe.CaptureRuntime();
+    log.LogWarning(
+        "Health FAIL ms={Ms} error={Error} consecutiveFails={Fails} threads={Avail}/{Max} heapMb={Heap}",
+        result.ElapsedMs,
+        result.Error ?? "connect-false",
+        monitor.ConsecutiveDbFailures,
+        snap.ThreadPoolAvailableWorkers,
+        snap.ThreadPoolMaxWorkers,
+        snap.GcHeapMb);
+
+    return Results.StatusCode(503);
+});
+
+// Diagnóstico manual — ver estado antes da app ficar totalmente presa
+app.MapGet("/health/diag", (HealthMonitorState monitor, IConfiguration config, HttpContext ctx) =>
+{
+    var requiredKey = config["Diagnostics:Key"];
+    if (!string.IsNullOrEmpty(requiredKey))
     {
-        log.LogWarning("Health: verificação à BD cancelada por timeout (4s) ou cliente desligou");
-        return Results.StatusCode(503);
+        var provided = ctx.Request.Headers["X-Stocko-Diag-Key"].FirstOrDefault();
+        if (!string.Equals(requiredKey, provided, StringComparison.Ordinal))
+            return Results.Unauthorized();
     }
-    catch (Exception ex)
+
+    var snap = SystemHealthProbe.CaptureRuntime();
+    return Results.Json(new
     {
-        log.LogError(ex, "Health: excepção ao verificar Postgres");
-        return Results.StatusCode(503);
-    }
+        checkedAtUtc = DateTime.UtcNow,
+        runtime = snap,
+        database = new
+        {
+            monitor.LastDbCheckUtc,
+            monitor.LastDbCheckMs,
+            monitor.LastDbCheckOk,
+            monitor.LastDbCheckError,
+            monitor.ConsecutiveDbFailures,
+            monitor.TotalDbChecks,
+            monitor.TotalDbFailures
+        },
+        recentJobs = monitor.GetRecentJobs()
+    });
 });
 
 // Seed base de dados — migrações e seed usam a mesma ligação directa do EF Core
@@ -179,6 +207,9 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await StockSeeder.SeedAsync(db);
 }
+
+// Limpar sockets mortos herdados de deploys anteriores
+NpgsqlConnection.ClearAllPools();
 
 // Registar cron jobs via DI (evita o problema do JobStorage.Current em produção)
 using (var scope = app.Services.CreateScope())

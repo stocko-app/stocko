@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Models;
@@ -7,28 +8,30 @@ namespace Stocko.Api.Jobs;
 
 public class AutoPickJob
 {
-    private readonly StockoDbContext _db;
-    private readonly GameWeekService _gameWeekService;
-    private readonly NotificationService _notificationService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public AutoPickJob(StockoDbContext db, GameWeekService gameWeekService, NotificationService notificationService)
+    public AutoPickJob(IServiceScopeFactory scopeFactory)
     {
-        _db = db;
-        _gameWeekService = gameWeekService;
-        _notificationService = notificationService;
+        _scopeFactory = scopeFactory;
     }
 
+    [DisableConcurrentExecution(60 * 10)]
     public async Task ExecuteAsync()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         Console.WriteLine($"🕐 AutoPickJob iniciado: {DateTime.UtcNow:HH:mm:ss}");
 
-        var currentWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
+        var gameWeekService = scope.ServiceProvider.GetRequiredService<GameWeekService>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<NotificationService>();
 
-        // Buscar semana anterior
-        var previousWeek = await _db.GameWeeks
+        var currentWeek = await gameWeekService.GetOrCreateCurrentWeekAsync();
+
+        var previousWeek = await db.GameWeeks
             .Where(w => w.WeekEnd < currentWeek.WeekStart)
             .OrderByDescending(w => w.WeekEnd)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cts.Token);
 
         if (previousWeek == null)
         {
@@ -36,35 +39,31 @@ public class AutoPickJob
             return;
         }
 
-        // Buscar todos os utilizadores
-        var allUsers = await _db.Users.Select(u => u.Id).ToListAsync();
+        var allUsers = await db.Users.Select(u => u.Id).ToListAsync(cts.Token);
 
-        // Buscar utilizadores que já fizeram picks esta semana
-        var usersWithPicks = await _db.Picks
+        var usersWithPicks = await db.Picks
             .Where(p => p.GameWeekId == currentWeek.Id)
             .Select(p => p.UserId)
             .Distinct()
-            .ToListAsync();
+            .ToListAsync(cts.Token);
 
-        // Utilizadores sem picks esta semana
         var usersWithoutPicks = allUsers
             .Where(u => !usersWithPicks.Contains(u))
             .ToList();
 
-        int autoPickCount = 0;
-
-        // Carregar picks da semana anterior em batch para todos os users sem picks
-        var allPreviousPicks = await _db.Picks
+        var allPreviousPicks = await db.Picks
             .Where(p => usersWithoutPicks.Contains(p.UserId) && p.GameWeekId == previousWeek.Id)
-            .ToListAsync();
+            .ToListAsync(cts.Token);
+
+        int autoPickCount = 0;
 
         foreach (var userId in usersWithoutPicks)
         {
-            var previousPicks = allPreviousPicks.Where(p => p.UserId == userId).ToList();
+            cts.Token.ThrowIfCancellationRequested();
 
+            var previousPicks = allPreviousPicks.Where(p => p.UserId == userId).ToList();
             if (!previousPicks.Any()) continue;
 
-            // Copiar picks para a semana actual
             var newPicks = previousPicks.Select(p => new Pick
             {
                 Id = Guid.NewGuid(),
@@ -78,15 +77,15 @@ public class AutoPickJob
                 CreatedAt = DateTime.UtcNow
             }).ToList();
 
-            await _db.Picks.AddRangeAsync(newPicks);
+            await db.Picks.AddRangeAsync(newPicks, cts.Token);
             autoPickCount++;
 
-            var user = await _db.Users.FindAsync(userId);
+            var user = await db.Users.FindAsync([userId], cts.Token);
             if (user != null)
-                await _notificationService.SendAutoPickConfirmationAsync(userId, user.StreakWeeks);
+                await notificationService.SendAutoPickConfirmationAsync(userId, user.StreakWeeks);
         }
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync(cts.Token);
         Console.WriteLine($"✅ AutoPickJob: {autoPickCount} utilizadores receberam auto-pick");
     }
 }

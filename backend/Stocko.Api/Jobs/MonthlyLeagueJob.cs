@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Stocko.Api.Data;
 using Stocko.Api.Services;
@@ -6,16 +7,13 @@ namespace Stocko.Api.Jobs;
 
 public class MonthlyLeagueJob
 {
-    private readonly StockoDbContext _db;
-    private readonly NotificationService _notificationService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    // Ordem dos tiers do mais baixo para o mais alto
     private static readonly List<string> TierOrder = new()
     {
         "bronze", "silver", "gold", "platinum", "diamond", "elite"
     };
 
-    // Threshold de utilizadores para desbloquear cada tier
     private static readonly Dictionary<string, int> TierThresholds = new()
     {
         { "silver",   200  },
@@ -24,22 +22,26 @@ public class MonthlyLeagueJob
         { "elite",    1000 }
     };
 
-    public MonthlyLeagueJob(StockoDbContext db, NotificationService notificationService)
+    public MonthlyLeagueJob(IServiceScopeFactory scopeFactory)
     {
-        _db = db;
-        _notificationService = notificationService;
+        _scopeFactory = scopeFactory;
     }
 
+    [DisableConcurrentExecution(60 * 30)]
     public async Task ExecuteAsync()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
         Console.WriteLine($"🕐 MonthlyLeagueJob iniciado: {DateTime.UtcNow:yyyy-MM-dd HH:mm}");
 
-        var totalUsers = await _db.Users.CountAsync();
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<StockoDbContext>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<NotificationService>();
+
+        var totalUsers = await db.Users.CountAsync(cts.Token);
         var activeTiers = GetActiveTiers(totalUsers);
 
         Console.WriteLine($"📊 Total utilizadores: {totalUsers} | Tiers activos: {string.Join(", ", activeTiers)}");
 
-        // Dias do mês anterior — contagem exacta dia a dia
         var now = DateTime.UtcNow;
         var firstDayLastMonth = DateOnly.FromDateTime(new DateTime(now.Year, now.Month, 1).AddMonths(-1));
         var lastDayLastMonth = DateOnly.FromDateTime(new DateTime(now.Year, now.Month, 1).AddDays(-1));
@@ -51,21 +53,22 @@ public class MonthlyLeagueJob
 
         foreach (var tier in activeTiers)
         {
-            var usersInTier = await _db.Users
+            cts.Token.ThrowIfCancellationRequested();
+
+            var usersInTier = await db.Users
                 .Where(u => u.LeagueTier == tier)
-                .ToListAsync();
+                .ToListAsync(cts.Token);
 
             if (usersInTier.Count < 2) continue;
 
-            // Pontos acumulados dia a dia no mês anterior (ignora fronteiras de semana)
             var userIds = usersInTier.Select(u => u.Id).ToList();
-            var dailyTotals = await _db.DailyScores
+            var dailyTotals = await db.DailyScores
                 .Where(ds => userIds.Contains(ds.UserId) &&
                              ds.Date >= firstDayLastMonth &&
                              ds.Date <= lastDayLastMonth)
                 .GroupBy(ds => ds.UserId)
                 .Select(g => new { UserId = g.Key, Points = g.Sum(ds => ds.Total) })
-                .ToListAsync();
+                .ToListAsync(cts.Token);
 
             var monthlyPoints = usersInTier
                 .Select(u => new
@@ -83,7 +86,6 @@ public class MonthlyLeagueJob
             var nextTier = GetNextTier(tier, activeTiers);
             var prevTier = GetPrevTier(tier, activeTiers);
 
-            // Promover top 20%
             if (nextTier != null)
             {
                 for (int i = 0; i < promotionCount; i++)
@@ -91,16 +93,14 @@ public class MonthlyLeagueJob
                     var user = monthlyPoints[i].User;
                     user.LeagueTier = nextTier;
 
-                    // Actualizar melhor tier histórico
                     if (TierOrder.IndexOf(nextTier) > TierOrder.IndexOf(user.BestLeagueTier))
                         user.BestLeagueTier = nextTier;
 
                     promoted++;
-                    await _notificationService.SendTierPromotionAsync(user.Id, nextTier);
+                    await notificationService.SendTierPromotionAsync(user.Id, nextTier);
                 }
             }
 
-            // Relegar bottom 20% (sem notificação — mecânicas não prevêem)
             if (prevTier != null)
             {
                 for (int i = count - relegationCount; i < count; i++)
@@ -111,20 +111,19 @@ public class MonthlyLeagueJob
             }
         }
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync(cts.Token);
         Console.WriteLine($"✅ MonthlyLeagueJob concluído — promovidos: {promoted} | relegados: {relegated}");
     }
 
     private List<string> GetActiveTiers(int totalUsers)
     {
-        // Bronze e Gold sempre activos (MVP)
         var active = new List<string> { "bronze", "gold" };
 
         if (totalUsers >= TierThresholds["silver"])
-            active.Insert(1, "silver"); // bronze → silver → gold
+            active.Insert(1, "silver");
 
         if (totalUsers >= TierThresholds["platinum"])
-            active.Add("platinum"); // ... → gold → platinum
+            active.Add("platinum");
 
         if (totalUsers >= TierThresholds["diamond"])
         {

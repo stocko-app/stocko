@@ -11,13 +11,13 @@ primary_region = 'ams'
   min_machines_running = 1
   processes = ['app']
 
-  # /health/live não abre Postgres — evita competir com API/Hangfire pelo pool de conexões
+  # /health testa Postgres (timeout 4s na app). Se a BD morrer, a Fly reinicia a máquina.
   [[http_service.checks]]
     interval = "30s"
-    timeout = "5s"
-    grace_period = "15s"
+    timeout = "6s"
+    grace_period = "20s"
     method = "GET"
-    path = "/health/live"
+    path = "/health"
 
 [[vm]]
   memory = '256mb'
