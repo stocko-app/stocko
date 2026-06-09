@@ -35,8 +35,26 @@ interface WeekData {
   deadline: string;
   status: string;
   deadlinePassed: boolean;
+  todayLisbon: string;
+  captainTargetDay: string;
+  captainMarketOpen: boolean;
+  captainTargetLabel: string;
+  canActivateCaptain: boolean;
   picks: Pick[];
   nextWeekDraft: NextWeekDraft | null;
+}
+
+function addCalendarDay(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().slice(0, 10);
+}
+
+function captainDayLabel(targetDay: string, todayLisbon: string): string {
+  if (targetDay === todayLisbon) return "hoje";
+  if (targetDay === addCalendarDay(todayLisbon, 1)) return "amanhã";
+  const [y, m, d] = targetDay.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("pt-PT", { weekday: "long", timeZone: "UTC" });
 }
 
 export default function DashboardPage() {
@@ -122,15 +140,11 @@ export default function DashboardPage() {
   }
 
   const totalPoints = data?.picks.reduce((sum, p) => sum + p.weekPoints, 0) ?? 0;
-  const todayDay = new Date().getDay();
+  const todayDay = new Date(`${data?.todayLisbon ?? ""}T12:00:00`).getDay();
   const activatedPick = data?.picks.find((p) => p.captainActivatedDay) ?? null;
   const alreadyActivated = !!activatedPick;
-  const canActivateCaptain =
-    !!data?.deadlinePassed &&
-    (data?.picks.length ?? 0) > 0 &&
-    !alreadyActivated &&
-    todayDay >= 1 &&
-    todayDay <= 4;
+  const canActivateCaptain = !!data?.canActivateCaptain;
+  const captainTargetLabel = data?.captainTargetLabel ?? "hoje";
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-20 md:pb-8">
@@ -173,7 +187,9 @@ export default function DashboardPage() {
             {alreadyActivated
               ? `Bala usada · ${activatedPick?.ticker}`
               : canActivateCaptain
-                ? "Toca num pick abaixo para activar"
+                ? data.captainMarketOpen
+                  ? `Mercado aberto · 2x ${captainTargetLabel}`
+                  : "Toca num pick abaixo para activar"
                 : todayDay === 5
                   ? "Hoje activa-se automaticamente"
                   : "Segunda a quinta, uma vez por semana"}
@@ -213,7 +229,8 @@ export default function DashboardPage() {
             </h2>
             {canActivateCaptain && (
               <p className="mt-1 text-sm text-slate-400">
-                Toca no card que queres a <span className="font-bold text-gold-400">2x</span> hoje — uma bala por semana.
+                Toca no card que queres a <span className="font-bold text-gold-400">2x</span> {captainTargetLabel}
+                {data.captainMarketOpen ? " (mercado já abriu)" : ""} — uma bala por semana.
               </p>
             )}
           </div>
@@ -257,7 +274,11 @@ export default function DashboardPage() {
                     : "border border-white/10 bg-white/5 text-slate-500 cursor-not-allowed"
                 )}
               >
-                {captainLoading ? "A activar..." : captainTicker ? `Confirmar ${captainTicker} · 2x` : "Escolhe um pick"}
+                {captainLoading
+                  ? "A activar..."
+                  : captainTicker
+                    ? `Confirmar ${captainTicker} · 2x ${captainTargetLabel}`
+                    : "Escolhe um pick"}
               </button>
             </div>
             {captainError && (
@@ -291,7 +312,8 @@ export default function DashboardPage() {
                     <p className="font-mono text-2xl font-black text-white">{activatedPick.ticker}</p>
                     <p className="text-sm text-slate-400 truncate">{activatedPick.name}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {new Date(activatedPick.captainActivatedDay!).toLocaleDateString("pt-PT", {
+                      2x {captainDayLabel(activatedPick.captainActivatedDay!, data.todayLisbon)} ·{" "}
+                      {new Date(`${activatedPick.captainActivatedDay}T12:00:00`).toLocaleDateString("pt-PT", {
                         weekday: "long",
                         day: "numeric",
                         month: "short",
@@ -334,7 +356,7 @@ export default function DashboardPage() {
                 >
                   {isSelected && (
                     <span className="absolute right-3 top-3 rounded-full border border-gold-400/50 bg-gold-400/20 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wider text-gold-300">
-                      2x hoje
+                      2x {captainTargetLabel}
                     </span>
                   )}
                   {isDraft && !isSelected && (

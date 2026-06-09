@@ -155,6 +155,11 @@ public class PicksController : ControllerBase
             };
         }
 
+        var utcNow = DateTime.UtcNow;
+        var todayLisbon = CaptainService.GetTodayLisbon(utcNow);
+        var captainTargetDay = CaptainService.GetCaptainTargetDay(utcNow);
+        var alreadyActivated = currentPicks.Any(p => p.CaptainActivatedDay != null);
+
         return Ok(new
         {
             GameWeekId = currentWeek.Id,
@@ -163,6 +168,15 @@ public class PicksController : ControllerBase
             Deadline = currentWeek.DraftDeadline,
             Status = currentWeek.Status,
             DeadlinePassed = _gameWeekService.IsDeadlinePassed(currentWeek),
+            TodayLisbon = todayLisbon,
+            CaptainTargetDay = captainTargetDay,
+            CaptainMarketOpen = CaptainService.HasMarketOpenedToday(utcNow),
+            CaptainTargetLabel = CaptainService.GetTargetDayLabel(captainTargetDay, todayLisbon),
+            CanActivateCaptain = _gameWeekService.IsDeadlinePassed(currentWeek) &&
+                                 currentPicks.Count > 0 &&
+                                 !alreadyActivated &&
+                                 CaptainService.CanActivateManually(utcNow) &&
+                                 captainTargetDay <= currentWeek.WeekEnd,
             Picks = currentPicks,
             NextWeekDraft = nextWeekDraft
         });
@@ -176,13 +190,15 @@ public class PicksController : ControllerBase
         if (userId == null) return Unauthorized("Token inválido.");
 
         var gameWeek = await _gameWeekService.GetOrCreateCurrentWeekAsync();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var utcNow = DateTime.UtcNow;
+        var todayLisbon = CaptainService.GetTodayLisbon(utcNow);
 
-        // Só pode activar Segunda a Quinta
-        if (today.DayOfWeek == DayOfWeek.Friday ||
-            today.DayOfWeek == DayOfWeek.Saturday ||
-            today.DayOfWeek == DayOfWeek.Sunday)
+        if (!CaptainService.CanActivateManually(utcNow))
             return BadRequest("O capitão só pode ser activado de Segunda a Quinta. Na Sexta é automático.");
+
+        var targetDay = CaptainService.GetCaptainTargetDay(utcNow);
+        if (targetDay > gameWeek.WeekEnd)
+            return BadRequest("Já não é possível activar o capitão para esta semana.");
 
         // Verificar se já activou o capitão esta semana
         var alreadyActivated = await _db.Picks.AnyAsync(p =>
@@ -205,14 +221,16 @@ public class PicksController : ControllerBase
         if (pick == null)
             return BadRequest("Esta ação não está nos teus picks desta semana.");
 
-        pick.CaptainActivatedDay = today;
+        pick.CaptainActivatedDay = targetDay;
         await _db.SaveChangesAsync();
+
+        var dayLabel = CaptainService.GetTargetDayLabel(targetDay, todayLisbon);
 
         return Ok(new
         {
-            Message = $"Capitão activado! {request.Ticker} conta x2 hoje ({today:dd/MM}).",
+            Message = $"Capitão activado! {request.Ticker} conta x2 {dayLabel} ({targetDay:dd/MM}).",
             Ticker = request.Ticker,
-            Day = today
+            Day = targetDay
         });
     }
     // GET /api/picks/daily-summary — resumo do dia actual com pontos de cada pick
