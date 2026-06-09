@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart2, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, Shield, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { PASSWORD_RULE_HINT_PT, isPasswordLongEnoughForLogin } from "@/lib/passwordPolicy";
 import { useAuth } from "@/store/auth";
+import { AuthShell, authInputClass, authLabelClass } from "@/components/stocko/AuthShell";
+import { cn } from "@/lib/cn";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -67,143 +69,203 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-navy-950">
-      <div className="absolute inset-0 bg-hero-glow pointer-events-none" />
-
-      <div className="relative w-full max-w-md">
-        {/* logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 justify-center">
-            <BarChart2 className="w-7 h-7 text-gold-400" />
-            <span className="font-bold text-2xl tracking-tight">
-              Sto<span className="text-gradient-gold">cko</span>
-            </span>
-          </Link>
-          <p className="text-slate-400 mt-2 text-sm">Bem-vindo de volta</p>
+    <AuthShell
+      eyebrow="Entrar na arena"
+      title={
+        <>
+          Volta ao <span className="text-gradient-score">jogo.</span>
+        </>
+      }
+      subtitle="Entra com email ou username. A tua semana, o teu draft e os rankings estão à tua espera."
+      aside={
+        <div className="space-y-6">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-electric">Player access</p>
+          <h1 className="text-5xl font-black leading-[0.95] tracking-[-0.05em] text-white">
+            Volta ao <span className="text-gradient-score">jogo.</span>
+          </h1>
+          <p className="max-w-md text-base leading-7 text-slate-400">
+            Pick semanal, capitão 2x, ligas privadas e tiers mensais — tudo num só sítio.
+          </p>
+          <div className="space-y-3">
+            {[
+              ["Draft", "5 ativos por semana até domingo 23:59"],
+              ["Capitão", "Activa no dia certo para duplicar pontos"],
+              ["Rankings", "Global, por tier e nas tuas ligas"],
+            ].map(([title, copy]) => (
+              <div
+                key={title}
+                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+              >
+                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-electric/25 bg-electric/10">
+                  {title === "Draft" ? (
+                    <Sparkles className="h-4 w-4 text-electric" />
+                  ) : (
+                    <Shield className="h-4 w-4 text-electric" />
+                  )}
+                </span>
+                <div>
+                  <p className="font-black text-white">{title}</p>
+                  <p className="mt-1 text-sm text-slate-500">{copy}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+      }
+      footer={
+        <p className="text-center text-sm text-slate-500">
+          Ainda não tens conta?{" "}
+          <Link href="/register" className="font-bold text-electric hover:text-white">
+            Regista-te grátis
+          </Link>
+        </p>
+      }
+    >
+      <div className="mb-6 flex items-center gap-2">
+        {(["identifier", "password"] as const).map((s, i) => (
+          <div key={s} className="flex flex-1 items-center gap-2">
+            <span
+              className={cn(
+                "grid h-8 w-8 place-items-center rounded-full border text-xs font-black",
+                step === s || (s === "identifier" && step === "password")
+                  ? "border-electric/40 bg-electric/15 text-electric"
+                  : "border-white/10 bg-white/[0.04] text-slate-500"
+              )}
+            >
+              {i + 1}
+            </span>
+            <span
+              className={cn(
+                "text-xs font-black uppercase tracking-[0.12em]",
+                step === s ? "text-white" : "text-slate-500"
+              )}
+            >
+              {s === "identifier" ? "Conta" : "Password"}
+            </span>
+            {i === 0 ? <div className="h-px flex-1 bg-white/10" /> : null}
+          </div>
+        ))}
+      </div>
 
-        {/* card */}
-        <div className="glass rounded-2xl p-8">
-          {passwordChangedBanner && (
-            <p className="text-success text-sm bg-success/10 border border-success/20 rounded-lg px-4 py-2 mb-5">
-              {passwordChangedBanner}
+      {passwordChangedBanner && (
+        <p className="mb-5 rounded-2xl border border-electric/25 bg-electric/10 px-4 py-3 text-sm font-semibold text-electric">
+          {passwordChangedBanner}
+        </p>
+      )}
+
+      {step === "identifier" && (
+        <form onSubmit={handleIdentifier} className="space-y-5">
+          <div>
+            <label className={authLabelClass}>Email ou username</label>
+            <input
+              type="text"
+              value={emailOrUsername}
+              onChange={(e) => {
+                setEmailOrUsername(e.target.value);
+                setError("");
+              }}
+              placeholder="o@teu.email ou o teu username"
+              required
+              autoFocus
+              autoComplete="username"
+              className={authInputClass}
+            />
+          </div>
+
+          {error && (
+            <p className="rounded-2xl border border-coral/25 bg-coral/10 px-4 py-3 text-sm font-semibold text-coral">
+              {error}
             </p>
           )}
 
-          {/* passo 1 — identificador */}
-          {step === "identifier" && (
-            <form onSubmit={handleIdentifier} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Email ou username
-                </label>
-                <input
-                  type="text"
-                  value={emailOrUsername}
-                  onChange={(e) => { setEmailOrUsername(e.target.value); setError(""); }}
-                  placeholder="o@teu.email ou o teu username"
-                  required
-                  autoFocus
-                  autoComplete="username"
-                  className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all"
-                />
-              </div>
+          <button
+            type="submit"
+            disabled={checking || !emailOrUsername.trim()}
+            className="btn-primary w-full rounded-2xl py-3.5 text-base font-black"
+          >
+            {checking ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> A verificar...
+              </>
+            ) : (
+              "Continuar"
+            )}
+          </button>
+        </form>
+      )}
 
-              {error && (
-                <p className="text-danger text-sm bg-danger/10 border border-danger/20 rounded-lg px-4 py-2">
-                  {error}
-                </p>
-              )}
+      {step === "password" && (
+        <form onSubmit={handleLogin} className="space-y-5">
+          <button
+            type="button"
+            onClick={() => {
+              setStep("identifier");
+              setError("");
+              setPassword("");
+            }}
+            className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left transition-colors hover:border-electric/25 hover:bg-electric/[0.06]"
+          >
+            <ArrowLeft className="h-4 w-4 shrink-0 text-slate-500" />
+            <span className="truncate text-sm font-semibold text-slate-300">{emailOrUsername}</span>
+          </button>
 
+          <div>
+            <label className={authLabelClass}>Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError("");
+                }}
+                placeholder="A tua password"
+                required
+                autoFocus
+                autoComplete="current-password"
+                className={cn(authInputClass, "pr-12")}
+              />
               <button
-                type="submit"
-                disabled={checking || !emailOrUsername.trim()}
-                className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 transition-colors hover:text-white"
               >
-                {checking ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> A verificar...</>
-                ) : (
-                  "Continuar"
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
-            </form>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">{PASSWORD_RULE_HINT_PT}</p>
+          </div>
+
+          {error && (
+            <p className="rounded-2xl border border-coral/25 bg-coral/10 px-4 py-3 text-sm font-semibold text-coral">
+              {error}
+            </p>
           )}
 
-          {/* passo 2 — password */}
-          {step === "password" && (
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* identificador (só leitura) + botão para voltar */}
-              <div
-                className="flex items-center gap-3 px-4 py-3 bg-navy-800 rounded-xl border border-white/10 cursor-pointer group"
-                onClick={() => { setStep("identifier"); setError(""); setPassword(""); }}
-              >
-                <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors shrink-0" />
-                <span className="text-sm text-slate-300 truncate">{emailOrUsername}</span>
-              </div>
+          <button
+            type="submit"
+            disabled={loading || !isPasswordLongEnoughForLogin(password)}
+            className="btn-primary w-full rounded-2xl py-3.5 text-base font-black"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> A entrar...
+              </>
+            ) : (
+              "Entrar na arena"
+            )}
+          </button>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                    placeholder="a tua password"
-                    required
-                    autoFocus
-                    autoComplete="current-password"
-                    className="w-full bg-navy-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition-all pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-slate-500 text-xs mt-1">{PASSWORD_RULE_HINT_PT}</p>
-              </div>
-
-              {error && (
-                <p className="text-danger text-sm bg-danger/10 border border-danger/20 rounded-lg px-4 py-2">
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading || !isPasswordLongEnoughForLogin(password)}
-                className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-navy-950 font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> A entrar...</>
-                ) : (
-                  "Entrar"
-                )}
-              </button>
-
-              <div className="text-center">
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  Esqueceu-se da password?
-                </Link>
-              </div>
-            </form>
-          )}
-
-          <p className="text-center text-sm text-slate-500 mt-6">
-            Ainda não tens conta?{" "}
-            <Link href="/register" className="text-gold-400 hover:text-gold-300 transition-colors">
-              Regista-te grátis
+          <div className="text-center">
+            <Link
+              href="/forgot-password"
+              className="text-sm font-bold text-slate-500 transition-colors hover:text-electric"
+            >
+              Esqueceu-se da password?
             </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+          </div>
+        </form>
+      )}
+    </AuthShell>
   );
 }
