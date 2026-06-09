@@ -70,6 +70,19 @@ export default function DashboardPage() {
     loadWeek();
   }, [token]); // re-fetch sempre que o utilizador muda
 
+  useEffect(() => {
+    if (!data) return;
+    const activated = data.picks.find((p) => p.captainActivatedDay);
+    if (activated) {
+      setCaptainTicker(activated.ticker);
+      return;
+    }
+    const draft = data.picks.find((p) => p.isCaptainDraft);
+    setCaptainTicker(draft?.ticker ?? "");
+    setCaptainError("");
+    setCaptainSuccess("");
+  }, [data?.gameWeekId, data?.picks]);
+
   async function activateCaptain() {
     if (!captainTicker) return;
     setCaptainLoading(true);
@@ -131,7 +144,6 @@ export default function DashboardPage() {
       {(() => {
         if (!data?.deadlinePassed || !data.picks.length) return null;
         const captainDraft = data.picks.find((p) => p.isCaptainDraft);
-        if (!captainDraft) return null;
         const alreadyActivated = data.picks.some((p) => p.captainActivatedDay !== null);
         const todayDay = new Date().getDay(); // 0=Dom, 1=Seg, ..., 5=Sex, 6=Sab
         const canActivate = !alreadyActivated && todayDay >= 1 && todayDay <= 4;
@@ -171,7 +183,13 @@ export default function DashboardPage() {
               <p className="font-black text-gold-300">Activar capitão hoje</p>
             </div>
             <p className="text-sm text-slate-400">
-              Escolhe qual dos teus picks conta a dobrar hoje. Só podes usar uma vez por semana.
+              Escolhe qual dos teus picks conta a dobrar <strong className="text-white">hoje</strong>.
+              Só podes usar uma vez por semana (segunda a quinta).
+              {captainDraft ? (
+                <span className="mt-1 block text-gold-300/90">
+                  Sugestão do draft: {captainDraft.ticker} ⭐
+                </span>
+              ) : null}
             </p>
 
             <div className="flex gap-2 flex-wrap">
@@ -233,7 +251,13 @@ export default function DashboardPage() {
             <Target className="w-6 h-6 text-gold-400" />
             {data?.picks.some((p) => p.captainActivatedDay) ? "Activo" : "Pendente"}
           </p>
-          <p className="text-xs text-slate-500 mt-2">Só pode ser activado uma vez por semana</p>
+          <p className="text-xs text-slate-500 mt-2">
+            {data?.picks.some((p) => p.captainActivatedDay)
+              ? "Bala usada esta semana"
+              : data?.deadlinePassed && new Date().getDay() >= 1 && new Date().getDay() <= 4
+                ? "Activável hoje — card dourado acima"
+                : "Segunda a quinta, uma vez por semana"}
+          </p>
         </GlassPanel>
       </div>
 
@@ -248,7 +272,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-sm text-slate-400">
-              Escolhe exactamente 5 acções. Marca ⭐ numa para a definir como capitão (pontos duplicados).
+              Escolhe exactamente 5 acções. O ⭐ é opcional — marca a tua sugestão de capitão; activas no dashboard de segunda a quinta.
             </p>
             <PickSelector
               maxPicks={5}
@@ -304,8 +328,13 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-black text-sm truncate">{pick.name}</span>
-                      {pick.isCaptainDraft && (
-                        <span title="Capitão">
+                      {pick.captainActivatedDay && (
+                        <span title="Capitão activado esta semana" className="text-[0.62rem] font-black uppercase tracking-wider text-gold-300">
+                          Cap. activo
+                        </span>
+                      )}
+                      {pick.isCaptainDraft && !pick.captainActivatedDay && (
+                        <span title="Sugestão de capitão no draft">
                           <Star className="w-3.5 h-3.5 text-gold-400 shrink-0" />
                         </span>
                       )}
