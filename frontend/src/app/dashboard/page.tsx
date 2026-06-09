@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus, ShieldCheck, CalendarClock, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Zap, AlertCircle, Plus, CalendarClock, Target, Crown } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/store/auth";
@@ -122,6 +122,15 @@ export default function DashboardPage() {
   }
 
   const totalPoints = data?.picks.reduce((sum, p) => sum + p.weekPoints, 0) ?? 0;
+  const todayDay = new Date().getDay();
+  const activatedPick = data?.picks.find((p) => p.captainActivatedDay) ?? null;
+  const alreadyActivated = !!activatedPick;
+  const canActivateCaptain =
+    !!data?.deadlinePassed &&
+    (data?.picks.length ?? 0) > 0 &&
+    !alreadyActivated &&
+    todayDay >= 1 &&
+    todayDay <= 4;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-20 md:pb-8">
@@ -139,97 +148,6 @@ export default function DashboardPage() {
           )
         }
       />
-
-      {/* card activação de capitão */}
-      {(() => {
-        if (!data?.deadlinePassed || !data.picks.length) return null;
-        const captainDraft = data.picks.find((p) => p.isCaptainDraft);
-        const alreadyActivated = data.picks.some((p) => p.captainActivatedDay !== null);
-        const todayDay = new Date().getDay(); // 0=Dom, 1=Seg, ..., 5=Sex, 6=Sab
-        const canActivate = !alreadyActivated && todayDay >= 1 && todayDay <= 4;
-
-        if (alreadyActivated) {
-          const activatedPick = data.picks.find((p) => p.captainActivatedDay !== null);
-          return (
-            <GlassPanel tone="gold" className="flex items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-gold-400 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-gold-300">Capitão activado</p>
-                <p className="text-xs text-slate-400">
-                  {activatedPick?.ticker} · {new Date(activatedPick!.captainActivatedDay!).toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "short" })}
-                </p>
-              </div>
-            </GlassPanel>
-          );
-        }
-
-        if (!canActivate) {
-          return (
-            <GlassPanel className="flex items-center gap-3">
-              <Star className="w-5 h-5 text-slate-500 shrink-0" />
-              <p className="text-sm text-slate-400">
-                {todayDay === 5
-                  ? "Hoje é Sexta — o capitão é activado automaticamente."
-                  : "O capitão só pode ser activado de Segunda a Quinta."}
-              </p>
-            </GlassPanel>
-          );
-        }
-
-        return (
-          <GlassPanel tone="gold" className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-gold-400 animate-pulse-gold" />
-              <p className="font-black text-gold-300">Activar capitão hoje</p>
-            </div>
-            <p className="text-sm text-slate-400">
-              Escolhe qual dos teus picks conta a dobrar <strong className="text-white">hoje</strong>.
-              Só podes usar uma vez por semana (segunda a quinta).
-              {captainDraft ? (
-                <span className="mt-1 block text-gold-300/90">
-                  Sugestão do draft: {captainDraft.ticker} ⭐
-                </span>
-              ) : null}
-            </p>
-
-            <div className="flex gap-2 flex-wrap">
-              {data.picks.map((p) => (
-                <button
-                  key={p.ticker}
-                  onClick={() => setCaptainTicker(p.ticker)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-sm font-mono font-bold border transition-all",
-                    captainTicker === p.ticker
-                      ? "bg-gold-400/20 border-gold-400/60 text-gold-300"
-                      : "bg-white/5 border-white/10 text-slate-300 hover:border-white/20"
-                  )}
-                >
-                  {p.ticker}
-                </button>
-              ))}
-            </div>
-
-            {captainError && (
-              <p className="text-sm text-danger flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" /> {captainError}
-              </p>
-            )}
-            {captainSuccess && (
-              <p className="text-sm text-success flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 shrink-0" /> {captainSuccess}
-              </p>
-            )}
-
-            <button
-              onClick={activateCaptain}
-              disabled={!captainTicker || captainLoading}
-              className="w-full py-3 rounded-2xl bg-gold-400 hover:bg-gold-300 text-navy-950 font-black text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,215,0,0.22)]"
-            >
-              {captainLoading ? "A activar..." : `Activar ${captainTicker || "—"} como capitão`}
-            </button>
-          </GlassPanel>
-        );
-      })()}
 
       <div className="grid gap-3 md:grid-cols-3">
         <GlassPanel tone="green">
@@ -252,11 +170,13 @@ export default function DashboardPage() {
             {data?.picks.some((p) => p.captainActivatedDay) ? "Activo" : "Pendente"}
           </p>
           <p className="text-xs text-slate-500 mt-2">
-            {data?.picks.some((p) => p.captainActivatedDay)
-              ? "Bala usada esta semana"
-              : data?.deadlinePassed && new Date().getDay() >= 1 && new Date().getDay() <= 4
-                ? "Activável hoje — card dourado acima"
-                : "Segunda a quinta, uma vez por semana"}
+            {alreadyActivated
+              ? `Bala usada · ${activatedPick?.ticker}`
+              : canActivateCaptain
+                ? "Toca num pick abaixo para activar"
+                : todayDay === 5
+                  ? "Hoje activa-se automaticamente"
+                  : "Segunda a quinta, uma vez por semana"}
           </p>
         </GlassPanel>
       </div>
@@ -284,22 +204,72 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* lista de picks */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">
-            Os teus picks
-          </h2>
+      {/* lista de picks + capitão integrado */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="section-title">
+              {canActivateCaptain ? "Os teus picks · escolhe o capitão" : "Os teus picks"}
+            </h2>
+            {canActivateCaptain && (
+              <p className="mt-1 text-sm text-slate-400">
+                Toca no card que queres a <span className="font-bold text-gold-400">2x</span> hoje — uma bala por semana.
+              </p>
+            )}
+          </div>
           {data && !data.deadlinePassed && (
             <button
               onClick={() => openPicker(data.picks.map((p) => ({ ticker: p.ticker, isCaptainDraft: p.isCaptainDraft })))}
-              className="btn-primary"
+              className="btn-primary shrink-0"
             >
               <Plus className="w-4 h-4" />
               {data.picks.length === 0 ? "Escolher picks" : "Alterar picks"}
             </button>
           )}
         </div>
+
+        {canActivateCaptain && (
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-gold-400/20 bg-gradient-to-br from-gold-400/[0.12] via-navy-900/60 to-transparent p-4 md:p-5">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gold-400/15 blur-2xl" />
+            <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl border border-gold-400/35 bg-gold-400/15 glow-gold">
+                  <Crown className="h-5 w-5 text-gold-400" />
+                </span>
+                <div>
+                  <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-gold-400">
+                    Captain arm
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    {captainTicker
+                      ? <>Seleccionado: <span className="font-mono font-black text-white">{captainTicker}</span></>
+                      : "Selecciona um pick na grelha"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={activateCaptain}
+                disabled={!captainTicker || captainLoading}
+                className={cn(
+                  "shrink-0 rounded-2xl px-6 py-3 text-sm font-black transition-all",
+                  captainTicker
+                    ? "bg-gradient-to-r from-gold-400 to-amber-300 text-navy-950 shadow-[0_0_28px_rgba(255,215,0,0.25)] hover:brightness-105"
+                    : "border border-white/10 bg-white/5 text-slate-500 cursor-not-allowed"
+                )}
+              >
+                {captainLoading ? "A activar..." : captainTicker ? `Confirmar ${captainTicker} · 2x` : "Escolhe um pick"}
+              </button>
+            </div>
+            {captainError && (
+              <p className="relative mt-3 flex items-center gap-2 text-sm text-coral">
+                <AlertCircle className="h-4 w-4 shrink-0" /> {captainError}
+              </p>
+            )}
+            {captainSuccess && (
+              <p className="relative mt-3 text-sm font-semibold text-electric">{captainSuccess}</p>
+            )}
+          </div>
+        )}
 
         {!data?.picks.length ? (
           <EmptyCard
@@ -308,36 +278,89 @@ export default function DashboardPage() {
           />
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
-            {data.picks.map((pick) => {
+            {activatedPick && (
+              <article className="md:col-span-2 relative overflow-hidden rounded-[1.5rem] border border-gold-400/40 bg-gradient-to-r from-gold-400/[0.14] to-gold-400/[0.04] p-5 glow-gold">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-14 w-14 place-items-center rounded-2xl border border-gold-400/50 bg-gold-400/20">
+                    <Crown className="h-7 w-7 text-gold-400" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-gold-400">
+                      Capitão activado
+                    </p>
+                    <p className="font-mono text-2xl font-black text-white">{activatedPick.ticker}</p>
+                    <p className="text-sm text-slate-400 truncate">{activatedPick.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {new Date(activatedPick.captainActivatedDay!).toLocaleDateString("pt-PT", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-mono text-4xl font-black text-gradient-gold">2x</p>
+                    <p className="text-xs font-bold text-slate-500">{activatedPick.weekPoints.toFixed(1)} pts</p>
+                  </div>
+                </div>
+              </article>
+            )}
+
+            {data.picks
+              .filter((pick) => !activatedPick || pick.id !== activatedPick.id)
+              .map((pick) => {
               const positive = (pick.latestPrice?.pctChange ?? 0) >= 0;
+              const isActivated = !!pick.captainActivatedDay;
+              const isSelected = canActivateCaptain && captainTicker === pick.ticker;
+              const isDraft = pick.isCaptainDraft && !isActivated;
+
+              const CardWrapper = canActivateCaptain ? "button" : "article";
+
               return (
-                <article
+                <CardWrapper
                   key={pick.id}
+                  type={canActivateCaptain ? "button" : undefined}
+                  onClick={canActivateCaptain ? () => setCaptainTicker(pick.ticker) : undefined}
                   className={cn(
-                    "glass glass-hover rounded-[1.4rem] p-4 flex items-center gap-4 border",
-                    positive ? "border-electric/25 bg-electric/[0.05]" : "border-coral/25 bg-coral/[0.05]",
-                    pick.isCaptainDraft && "border-gold-400/40 bg-gold-400/[0.07]"
+                    "relative w-full text-left rounded-[1.4rem] p-4 flex items-center gap-4 border transition-all duration-200",
+                    canActivateCaptain && "cursor-pointer hover:scale-[1.01]",
+                    !isActivated && !isSelected && (positive
+                      ? "glass glass-hover border-electric/20 bg-electric/[0.04]"
+                      : "glass glass-hover border-coral/20 bg-coral/[0.04]"),
+                    isDraft && !isSelected && !isActivated && "border-gold-400/25",
+                    isSelected && "border-gold-400/70 bg-gold-400/[0.12] glow-gold scale-[1.02] ring-1 ring-gold-400/30",
+                    isActivated && "border-gold-400/50 bg-gold-400/[0.1] opacity-90"
                   )}
                 >
-                  {/* ticker */}
-                  <div className="w-14 h-14 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-black text-white">{pick.ticker}</span>
+                  {isSelected && (
+                    <span className="absolute right-3 top-3 rounded-full border border-gold-400/50 bg-gold-400/20 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wider text-gold-300">
+                      2x hoje
+                    </span>
+                  )}
+                  {isDraft && !isSelected && (
+                    <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full border border-gold-400/30 bg-gold-400/10">
+                      <Star className="h-3 w-3 fill-gold-400 text-gold-400" />
+                    </span>
+                  )}
+
+                  <div
+                    className={cn(
+                      "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border",
+                      isSelected || isActivated
+                        ? "border-gold-400/40 bg-gold-400/15"
+                        : "border-white/10 bg-white/[0.06]"
+                    )}
+                  >
+                    {isActivated ? (
+                      <Crown className="h-6 w-6 text-gold-400" />
+                    ) : (
+                      <span className="text-xs font-black text-white">{pick.ticker}</span>
+                    )}
                   </div>
 
-                  {/* info */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-8">
                     <div className="flex items-center gap-2">
                       <span className="font-black text-sm truncate">{pick.name}</span>
-                      {pick.captainActivatedDay && (
-                        <span title="Capitão activado esta semana" className="text-[0.62rem] font-black uppercase tracking-wider text-gold-300">
-                          Cap. activo
-                        </span>
-                      )}
-                      {pick.isCaptainDraft && !pick.captainActivatedDay && (
-                        <span title="Sugestão de capitão no draft">
-                          <Star className="w-3.5 h-3.5 text-gold-400 shrink-0" />
-                        </span>
-                      )}
                       {pick.isAuto && (
                         <span title="Auto-pick">
                           <Zap className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -347,10 +370,14 @@ export default function DashboardPage() {
                     <span className="text-xs text-slate-500">{pick.sector}</span>
                   </div>
 
-                  {/* variação */}
                   <div className="text-right shrink-0">
                     {pick.latestPrice ? (
-                      <div className={cn("flex items-center gap-1 font-mono text-base font-black", positive ? "text-success" : "text-danger")}>
+                      <div
+                        className={cn(
+                          "flex items-center justify-end gap-1 font-mono text-base font-black",
+                          positive ? "text-electric" : "text-coral"
+                        )}
+                      >
                         {positive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         {Math.abs(pick.latestPrice.pctChange).toFixed(2)}%
                       </div>
@@ -361,7 +388,7 @@ export default function DashboardPage() {
                       {pick.weekPoints.toFixed(1)} pts
                     </div>
                   </div>
-                </article>
+                </CardWrapper>
               );
             })}
           </div>
